@@ -69,6 +69,7 @@ export function Header() {
   }, [menuOpen]);
   return (
     <header
+      data-component="Header"
       className={`site-header relative z-30 ${pathname === "/" ? "home-header" : ""}`}
     >
       <div className="site-container flex h-full items-center justify-between">

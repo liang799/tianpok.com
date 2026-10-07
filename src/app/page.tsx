@@ -3,6 +3,7 @@ import { ArchitectureBackdrop } from "@/components/construction-scene";
 import { ConstructionHero } from "@/components/construction-hero";
 import { ArrowRight, ArrowUpRight, GithubIcon } from "@/components/icons";
 import { FeaturedWork } from "@/components/featured-work";
+import { InsideBuild } from "@/components/inside-build";
 import { Reveal } from "@/components/reveal";
 import { projects } from "@/data/projects";
 import { StructuredData } from "@/components/structured-data";
@@ -44,8 +45,10 @@ export default function Home() {
         </div>
       </ConstructionHero>
       <FeaturedWork projects={projects} />
+      <InsideBuild />
       <section
         id="about"
+        data-component="About"
         className="about-section relative isolate overflow-hidden"
         aria-labelledby="about-title"
       >

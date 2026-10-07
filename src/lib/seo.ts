@@ -10,6 +10,7 @@ export const site = {
     "Tian Pok is a Singapore-based software engineer building practical, purposeful web and mobile products. Explore selected projects, experiments, and product design work.",
   email: "hello@tianpok.com",
   github: "https://github.com/liang799",
+  linkedin: "https://www.linkedin.com/in/tianpok-neoh/",
 };
 
 export function absoluteUrl(path: string) {
@@ -70,7 +71,7 @@ const person = {
   description:
     "Singapore-based software engineer building web and mobile products.",
   email: site.email,
-  sameAs: [site.github],
+  sameAs: [site.github, site.linkedin],
 };
 
 export const homeStructuredData = {

@@ -41,6 +41,7 @@ export function FeaturedWork({ projects }: { projects: Project[] }) {
 
   return (
     <section
+      data-component="FeaturedWork"
       id="projects"
       className="featured-work site-container"
       aria-labelledby="projects-title"

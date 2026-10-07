@@ -1,0 +1,192 @@
+import { expect, test, type Locator } from "@playwright/test";
+
+async function opacity(element: Locator) {
+  return element.evaluate((node) => Number(getComputedStyle(node).opacity));
+}
+
+test("the workbench supports keyboard tabs, wrapping, and Home/End", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const section = page.locator("#inside-the-build");
+  const structure = section.getByRole("tab", { name: /Structure/ });
+  const components = section.getByRole("tab", { name: /Components/ });
+  const motion = section.getByRole("tab", { name: /Motion/ });
+  await structure.click();
+  await structure.press("ArrowRight");
+  await expect(components).toBeFocused();
+  await expect(components).toHaveAttribute("aria-selected", "true");
+  await expect(structure).toHaveAttribute("tabindex", "-1");
+  await expect(
+    section.getByRole("tabpanel", { name: /Components/ }),
+  ).toBeVisible();
+  await components.press("End");
+  await expect(motion).toBeFocused();
+  await motion.press("ArrowRight");
+  await expect(structure).toBeFocused();
+  await structure.press("ArrowLeft");
+  await expect(motion).toBeFocused();
+  await motion.press("Home");
+  await expect(structure).toBeFocused();
+  await expect(structure).toHaveAttribute("aria-selected", "true");
+});
+
+test("structure view outlines the real page and cleans up on Escape and navigation", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const section = page.locator("#inside-the-build");
+  const root = page.locator("html");
+  const expose = section.getByRole("button", { name: "Expose page layout" });
+  await expose.click();
+  await expect(root).toHaveAttribute("data-inspect-layout", "true");
+  await expect(
+    section.getByRole("button", { name: "Hide page layout" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("button", { name: "Exit structure view" }),
+  ).toBeVisible();
+  const projects = page.locator("#projects");
+  await expect(projects).toHaveAttribute("data-component");
+  await expect
+    .poll(() =>
+      projects.evaluate((node) => getComputedStyle(node).outlineStyle),
+    )
+    .not.toBe("none");
+  const header = page.getByRole("banner");
+  await expect(header).toHaveAttribute("data-component", "Header");
+  await expect
+    .poll(() => header.evaluate((node) => getComputedStyle(node).outlineStyle))
+    .not.toBe("none");
+
+  await page.keyboard.press("Escape");
+  await expect(root).not.toHaveAttribute("data-inspect-layout");
+  await expect(expose).toBeFocused();
+  await expect(expose).toHaveAttribute("aria-pressed", "false");
+
+  await expose.click();
+  const components = section.getByRole("tab", { name: /Components/ });
+  await components.click();
+  await page.keyboard.press("Escape");
+  await expect(root).not.toHaveAttribute("data-inspect-layout");
+  await expect(components).toBeFocused();
+  await components.press("Home");
+  await expose.click();
+  await components.click();
+  await section.getByRole("link", { name: /^Vigour/ }).click();
+  await expect(page).toHaveURL("/projects/vigour");
+  await expect(root).not.toHaveAttribute("data-inspect-layout");
+  await expect(
+    page.getByRole("button", { name: "Exit structure view" }),
+  ).toHaveCount(0);
+  await page.goBack();
+  await expect(section).toBeVisible();
+  await expect(root).not.toHaveAttribute("data-inspect-layout");
+});
+
+test("project data drives the real card, source example, and destination", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const section = page.locator("#inside-the-build");
+  await section.getByRole("tab", { name: /Components/ }).click();
+  const panel = section.getByRole("tabpanel", { name: /Components/ });
+  await expect(
+    panel.getByRole("heading", { name: "Vigour", exact: true }),
+  ).toBeVisible();
+  await panel
+    .getByRole("combobox", { name: "Project data" })
+    .selectOption("tree");
+  await expect(
+    panel.getByRole("heading", { name: "TREE", exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("heading", { name: "Vigour", exact: true }),
+  ).toHaveCount(0);
+  await expect(panel.locator("code")).toContainText('slug === "tree"');
+  await expect(
+    panel.getByRole("img", { name: /TREE environmental organisation/ }),
+  ).toBeVisible();
+  await panel.getByRole("link", { name: /^TREE/ }).click();
+  await expect(page).toHaveURL("/projects/tree");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("TREE");
+});
+
+test("motion presets and keyboard scrubbing control the actual assembly", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const section = page.locator("#inside-the-build");
+  await section.getByRole("tab", { name: /Motion/ }).click();
+  const panel = section.getByRole("tabpanel", { name: /Motion/ });
+  const slider = panel.getByRole("slider", { name: /Assembly progress/ });
+  const artwork = panel.locator('[data-motion-step="final-artwork"]');
+  const cap = panel.locator('[data-assembly-part="letter-cap"]');
+
+  await panel.getByRole("button", { name: "Start", exact: true }).click();
+  await expect(slider).toHaveValue("0");
+  await expect.poll(() => opacity(cap)).toBeLessThan(0.01);
+  await panel.getByRole("button", { name: "Halfway" }).click();
+  await expect(slider).toHaveValue("50");
+  await expect(panel.getByText("50%", { exact: true })).toBeVisible();
+  await expect(panel.locator("code")).toContainText("input.set(0.50)");
+  await expect
+    .poll(() => opacity(panel.locator('[data-assembly-part="foundation"]')))
+    .toBeGreaterThan(0.99);
+  await expect.poll(() => opacity(cap)).toBeLessThan(0.01);
+
+  await panel.getByRole("button", { name: "Complete", exact: true }).click();
+  await expect(slider).toHaveValue("100");
+  await expect.poll(() => opacity(artwork)).toBeGreaterThan(0.99);
+  await slider.focus();
+  await slider.press("Home");
+  await expect(slider).toHaveValue("0");
+  await expect.poll(() => opacity(cap)).toBeLessThan(0.01);
+  await slider.press("End");
+  await expect(slider).toHaveValue("100");
+  await expect.poll(() => opacity(artwork)).toBeGreaterThan(0.99);
+});
+
+test("the workbench fits 320px and reduced motion keeps manual controls usable", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  const section = page.locator("#inside-the-build");
+  for (const tab of ["Structure", "Components", "Motion"]) {
+    await section.getByRole("tab", { name: new RegExp(tab) }).click();
+    const width = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      content: Math.max(
+        document.documentElement.scrollWidth,
+        document.body.scrollWidth,
+      ),
+    }));
+    expect(
+      width.content,
+      `${tab} panel must not widen the page`,
+    ).toBeLessThanOrEqual(width.viewport + 1);
+  }
+  const panel = section.getByRole("tabpanel", { name: /Motion/ });
+  await expect(
+    panel.getByText("Reduced motion · instant updates"),
+  ).toBeVisible();
+  await panel.getByRole("button", { name: "Complete", exact: true }).click();
+  await expect(
+    panel.getByRole("slider", { name: /Assembly progress/ }),
+  ).toHaveValue("100");
+  await expect
+    .poll(() => opacity(panel.locator('[data-motion-step="final-artwork"]')))
+    .toBeGreaterThan(0.99);
+  await panel.getByRole("button", { name: "Start", exact: true }).click();
+  await expect
+    .poll(() => opacity(panel.locator('[data-assembly-part="letter-cap"]')))
+    .toBeLessThan(0.01);
+  expect(errors).toEqual([]);
+});

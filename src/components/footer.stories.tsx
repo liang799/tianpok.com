@@ -22,8 +22,7 @@ const meta = {
       footer.getByRole("navigation", { name: "Footer navigation" }),
     );
     for (const [name, href] of [
-      ["Home", "/#home"],
-      ["Projects", "/#projects"],
+      ["Work", "/#projects"],
       ["About", "/#about"],
       ["Contact", "mailto:hello@tianpok.com"],
     ]) {
@@ -40,20 +39,67 @@ const meta = {
     await expect(github).toHaveAttribute("href", "https://github.com/liang799");
     await expect(github).toHaveAttribute("target", "_blank");
     await expect(github).toHaveAttribute("rel", "noreferrer");
+    const linkedin = footer.getByRole("link", { name: "Tian Pok on LinkedIn" });
+    await expect(linkedin).toHaveAttribute(
+      "href",
+      "https://www.linkedin.com/in/tianpok-neoh/",
+    );
+    await expect(linkedin).toHaveAttribute("target", "_blank");
+    await expect(linkedin).toHaveAttribute("rel", "noreferrer");
     await expect(
       footer.getByRole("link", {
-        name: "Tian Pok — home. Ideas under construction",
+        name: "Tian Pok — home",
       }),
     ).toHaveAttribute("href", "/");
-    await expect(footer.getByText("Ideas under construction")).toBeVisible();
+    await expect(
+      footer.getByText(
+        "Building practical, purposeful software for a better digital tomorrow.",
+      ),
+    ).toBeVisible();
+    await expect(
+      footer.getByText("© 2026 Tian Pok. All rights reserved."),
+    ).toBeVisible();
+    await expect(footer.getByText(/Based in Singapore/)).toBeVisible();
+    await expect(
+      footer.getByRole("heading", { name: "Connect" }),
+    ).toBeVisible();
+    await expect(navigation.getAllByRole("link")).toHaveLength(3);
   },
 } satisfies Meta<typeof Footer>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Desktop: Story = {};
+export const Desktop: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: async (context) => {
+    await meta.play(context);
+    const footer = within(context.canvas.getByRole("contentinfo"));
+    for (const name of [
+      "Tian Pok — home",
+      "Work",
+      "About",
+      "Contact",
+      "Tian Pok on GitHub",
+      "Tian Pok on LinkedIn",
+      "Email hello@tianpok.com",
+    ]) {
+      await context.userEvent.tab();
+      await expect(footer.getByRole("link", { name })).toHaveFocus();
+    }
+  },
+};
 
 export const Mobile: Story = {
   globals: { viewport: { value: "mobile", isRotated: false } },
+  play: async (context) => {
+    await meta.play(context);
+    const footer = context.canvas.getByRole("contentinfo");
+    const viewportWidth = footer.ownerDocument.documentElement.clientWidth;
+    for (const element of footer.querySelectorAll("a, p, li")) {
+      const bounds = element.getBoundingClientRect();
+      await expect(bounds.left).toBeGreaterThanOrEqual(0);
+      await expect(bounds.right).toBeLessThanOrEqual(viewportWidth + 1);
+    }
+  },
 };

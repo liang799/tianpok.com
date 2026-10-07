@@ -19,6 +19,7 @@ import DesktopConstructionScene from "./desktop-construction-scene";
 import { MobileConstructionArt } from "./mobile-construction-art";
 import Link from "next/link";
 import { ArrowRight } from "./icons";
+import { constructionSpring } from "@/lib/construction-motion";
 
 const ConstructionArtwork = memo(DesktopConstructionScene);
 
@@ -59,14 +60,7 @@ export function ConstructionHero({ children }: { children: ReactNode }) {
   });
   // A wheel tick can jump hundreds of pixels. Filter that input once for the
   // entire scene so every piece stays in sync without a bouncy overshoot.
-  const assemblyProgress = useSpring(scrollYProgress, {
-    stiffness: 220,
-    damping: 32,
-    mass: 0.75,
-    restDelta: 0.0001,
-    restSpeed: 0.0001,
-    skipInitialAnimation: true,
-  });
+  const assemblyProgress = useSpring(scrollYProgress, constructionSpring);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -142,6 +136,7 @@ export function ConstructionHero({ children }: { children: ReactNode }) {
         id="home"
         className="hero construction-stage relative isolate overflow-hidden"
         data-testid="construction-stage"
+        data-component="ConstructionHero"
         aria-labelledby="hero-title"
       >
         <div className="blueprint-grid" aria-hidden="true" />

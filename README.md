@@ -40,10 +40,18 @@ Vitest runs these tests through Storybook's Next.js Vite integration in a real C
 
 Storybook shares the site's Tailwind styles and font definitions. `.storybook/redirect-boundary.tsx` is a Storybook-only compatibility adapter for Next.js 16.4's new layout cache context; it preserves the real redirect boundary and leaves production bundling unchanged. Remove the adapter when Storybook's router provider supports `parentRenderTree`.
 
+### Published component workshop
+
+`npm run build` builds Storybook, stages it in `public/storybook/`, then builds Next.js. The same deployment serves the working component workshop at `/storybook/index.html`; no separate hosting or account is required. Generated Storybook files are ignored by Git and excluded from subsequent Storybook asset inputs, so repeated builds cannot nest copies of the workshop.
+
+`npm run dev` prepares that URL on first run. Run `npm run prepare-storybook` to refresh the published local snapshot after editing stories, or use `npm run storybook` for the live development server. `npm run build-storybook` remains a standalone build into `storybook-static/`. The production browser suite checks the published manager, iframe, story index, keyboard animation controls, and asset requests. Storybook responses and HTML carry `noindex`; the portfolio's crawl settings remain unchanged.
+
 ## Content and structure
 
 - `src/data/projects.ts` — project names, descriptions, categories, images, and original external links.
 - `src/app/page.tsx` — landing page.
+- `src/components/inside-build.tsx` — public interactive workbench for inspecting the page structure, real project cards, and construction motion.
+- `src/lib/construction-motion.ts` — spring settings shared by the hero and the workbench.
 - `src/app/projects/` — filterable project index and individual project pages.
 - `src/components/construction-scene.tsx` — original SVG crane, city, excavator, and architecture artwork.
 - `src/app/globals.css` — visual theme, responsive layouts, and animation.
@@ -56,6 +64,10 @@ Email actions use `hello@tianpok.com`. The GitHub footer link uses the repositor
 ## Design and behavior
 
 The page includes a mobile navigation menu, section-aware navigation, entrance animations, hover transitions, keyboard focus styling, project category filters, and a custom 404 page.
+
+The **Inside the build** section makes the implementation inspectable. Its Structure tab outlines the real page containers and exposes component boundaries; Escape or the floating exit control restores the normal view, and navigation cleans up inspection mode. Its Components tab renders the actual project card with selectable project data. Its Motion tab renders the actual construction scene with the hero's shared spring settings and keyboard-accessible progress controls. Reduced-motion users can still scrub directly without spring interpolation. Source links point to the implementation and browser tests; the public Storybook workshop exposes isolated components and interaction stories. Code snippets are explanatory excerpts, not a separate implementation.
+
+The footer follows the dark three-column design with the original wordmark, navigation, GitHub, LinkedIn, and email. Its LinkedIn destination is the profile supplied by Tian Pok.
 
 The light desktop hero assembles a cinematic TP construction scene as you scroll. Foundations, scaffold, concrete letter sections, bracing, and workers arrive in sequence while the crane delivers its load. A shared Motion spring smooths native scroll input; transforms update directly without rendering React on every frame. Scrolling upward reverses construction. The hero stays in view during the build sequence, then releases into the featured-work carousel. Section links skip ahead normally.
 
