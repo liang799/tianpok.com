@@ -167,28 +167,46 @@ test("project filters update both the visible cards and selection state", async 
   }
 });
 
-test("featured work controls reveal the remaining projects and return to the first", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1440, height: 1000 });
+test("portfolio shows every project in a responsive grid", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/#projects");
-  const work = page.getByRole("region", { name: "Featured work" });
-  const previous = work.getByRole("button", { name: "Previous projects" });
-  const next = work.getByRole("button", { name: "Next projects" });
-  await expect(previous).toBeDisabled();
-  await expect(next).toBeEnabled();
-  await expect(work.getByRole("link", { name: /^Vigour/ })).toBeInViewport();
+  const portfolio = page.getByRole("region", { name: "Portfolio" });
+  const cards = portfolio.getByRole("link").filter({
+    has: page.getByRole("heading", { level: 3 }),
+  });
+  await expect(cards).toHaveCount(6);
+  await expect(portfolio.getByRole("button")).toHaveCount(0);
 
-  await next.click();
-  await expect(
-    work.getByRole("link", { name: /^Onesystem Technologies/ }),
-  ).toBeInViewport();
-  await expect(next).toBeDisabled();
-  await expect(previous).toBeEnabled();
-  await previous.click();
-  await expect(work.getByRole("link", { name: /^Vigour/ })).toBeInViewport();
-  await expect(previous).toBeDisabled();
+  for (const [width, columns] of [
+    [1440, 3],
+    [768, 2],
+    [390, 1],
+  ] as const) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.evaluate(() => document.fonts.ready);
+    const bounds = await cards.evaluateAll((elements) =>
+      elements.map((element) => {
+        const { top, left, right, bottom } = element.getBoundingClientRect();
+        return { top, left, right, bottom };
+      }),
+    );
+
+    for (const [index, card] of bounds.entries()) {
+      expect(card.left).toBeGreaterThanOrEqual(0);
+      expect(card.right).toBeLessThanOrEqual(width);
+      expect(card.top).toBeCloseTo(
+        bounds[Math.floor(index / columns) * columns].top,
+        0,
+      );
+      expect(card.left).toBeCloseTo(bounds[index % columns].left, 0);
+      if (index % columns > 0) {
+        expect(card.left).toBeGreaterThan(bounds[index - 1].right);
+      }
+      if (index >= columns) {
+        expect(card.top).toBeGreaterThan(bounds[index - columns].bottom);
+      }
+    }
+  }
 });
 
 test("mobile navigation opens, closes with Escape, and follows a section link", async ({
@@ -217,7 +235,7 @@ test("mobile navigation opens, closes with Escape, and follows a section link", 
     "false",
   );
   await expect(
-    page.getByRole("heading", { name: "Featured work", exact: true }),
+    page.getByRole("heading", { name: "Portfolio", exact: true }),
   ).toBeInViewport();
 });
 

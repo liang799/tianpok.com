@@ -90,14 +90,14 @@ test("mobile work button reaches the projects and browser Back restores that sec
   await page.getByRole("link", { name: "View my work", exact: true }).click();
   await expect(page).toHaveURL("/#projects");
   await expect(
-    page.getByRole("heading", { name: "Featured work", exact: true }),
+    page.getByRole("heading", { name: "Portfolio", exact: true }),
   ).toBeInViewport();
   await page.getByRole("link", { name: /^Vigour/ }).click();
   await expect(page).toHaveURL("/projects/vigour");
   await page.goBack();
   await expect(page).toHaveURL("/#projects");
   await expect(
-    page.getByRole("heading", { name: "Featured work", exact: true }),
+    page.getByRole("heading", { name: "Portfolio", exact: true }),
   ).toBeInViewport();
 });
 
@@ -121,7 +121,7 @@ test("reduced motion shows the complete mobile artwork with ordinary scrolling",
   await expect(illustration).toHaveCSS("transform", initialTransform);
   await page.getByRole("link", { name: "View my work", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Featured work", exact: true }),
+    page.getByRole("heading", { name: "Portfolio", exact: true }),
   ).toBeInViewport();
   expect(errors, "Reduced-motion hydration must not produce errors").toEqual(
     [],
@@ -139,7 +139,7 @@ test.describe("mobile without JavaScript", () => {
     await page.getByRole("link", { name: "View my work", exact: true }).click();
     await expect(page).toHaveURL("/#projects");
     await expect(
-      page.getByRole("heading", { name: "Featured work", exact: true }),
+      page.getByRole("heading", { name: "Portfolio", exact: true }),
     ).toBeInViewport();
   });
 });

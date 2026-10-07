@@ -17,14 +17,12 @@ const meta = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await waitFor(() =>
-      expect(
-        canvas.getByRole("heading", { name: "Featured work" }),
-      ).toBeVisible(),
+      expect(canvas.getByRole("heading", { name: "Portfolio" })).toBeVisible(),
     );
     await expect(
-      within(
-        canvas.getByRole("region", { name: "Featured work" }),
-      ).getAllByRole("link"),
+      within(canvas.getByRole("region", { name: "Portfolio" })).getAllByRole(
+        "link",
+      ),
     ).toHaveLength(7);
     await waitFor(() =>
       expect(

@@ -266,7 +266,7 @@ test("the completed scene releases into the portfolio and the CTA can skip it", 
   expect(stageBounds).not.toBeNull();
   await page.mouse.wheel(0, stageBounds!.height + 1);
   await expect(
-    page.getByRole("heading", { name: "Featured work", exact: true }),
+    page.getByRole("heading", { name: "Portfolio", exact: true }),
   ).toBeInViewport();
   // A compact featured-work row can bring the document to its end before the
   // whole hero leaves the viewport. Its upward travel proves the pin released.
@@ -281,12 +281,12 @@ test("the completed scene releases into the portfolio and the CTA can skip it", 
     .click();
   await expect(page).toHaveURL("/#projects");
   await expect(
-    page.getByRole("heading", { name: "Featured work", exact: true }),
+    page.getByRole("heading", { name: "Portfolio", exact: true }),
   ).toBeInViewport();
 });
 
 for (const [hash, heading] of [
-  ["projects", "Featured work"],
+  ["projects", "Portfolio"],
   ["about", /Still\s*Building/],
 ] as const) {
   test(`a direct #${hash} link remains at its destination after the scroll track is enabled`, async ({
@@ -316,7 +316,7 @@ test("returning from a project restores the portfolio beyond the construction tr
     .click();
   await expect(page).toHaveURL("/#projects");
   await expect(
-    page.getByRole("heading", { name: "Featured work", exact: true }),
+    page.getByRole("heading", { name: "Portfolio", exact: true }),
   ).toBeInViewport();
   await page.getByRole("link", { name: /^Vigour/ }).click();
   await expect(page).toHaveURL("/projects/vigour");
@@ -330,7 +330,7 @@ test("returning from a project restores the portfolio beyond the construction tr
   );
   await settleHeroLayout(page);
   await expect(
-    page.getByRole("heading", { name: "Featured work", exact: true }),
+    page.getByRole("heading", { name: "Portfolio", exact: true }),
   ).toBeInViewport();
 });
 
@@ -394,7 +394,7 @@ test("reduced motion presents the completed building with ordinary scrolling", a
     .getByRole("link", { name: "View my work", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Featured work", exact: true }),
+    page.getByRole("heading", { name: "Portfolio", exact: true }),
   ).toBeInViewport();
 });
 
@@ -415,7 +415,7 @@ test.describe("without JavaScript", () => {
       .click();
     await expect(page).toHaveURL("/#projects");
     await expect(
-      page.getByRole("heading", { name: "Featured work", exact: true }),
+      page.getByRole("heading", { name: "Portfolio", exact: true }),
     ).toBeInViewport();
   });
 });
