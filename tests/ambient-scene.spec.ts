@@ -1,5 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import sharp from "sharp";
+import {
+  enterLiveHero,
+  expectNormalHeroFlow,
+  finishIntroMedia,
+} from "./hero-helpers";
 
 function scene(page: Page) {
   return page.getByTestId("desktop-construction-scene");
@@ -50,6 +55,7 @@ async function openOverview(page: Page) {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
   await page.evaluate(() => document.fonts.ready);
+  await enterLiveHero(page);
   await expect(scene(page)).toHaveAttribute("data-renderer", "webgl", {
     timeout: 20_000,
   });
@@ -166,7 +172,7 @@ test("reduced motion keeps the completed worksite static and hides ambient contr
   await expect(scene(page)).toHaveAttribute("data-phase", "completed");
 });
 
-test("replay freezes ambient life while the crane assembly remains scroll controlled", async ({
+test("replaying the prerendered intro suspends ambient life without changing the completed assembly", async ({
   page,
 }) => {
   await openOverview(page);
@@ -176,14 +182,17 @@ test("replay freezes ambient life while the crane assembly remains scroll contro
     .click();
   await expect(page.getByTestId("construction-track")).toHaveAttribute(
     "data-animated",
-    "true",
+    "false",
   );
-  await expect(scene(page)).toHaveAttribute("data-phase", "approach");
+  await expect(scene(page)).toHaveAttribute("data-presentation", "intro");
+  await expect(scene(page)).toHaveAttribute("data-phase", "completed");
+  await expectNormalHeroFlow(page);
   await expectLifeFrozen(page);
   await expect(
     page.getByRole("button", { name: /^(Pause|Resume) scene motion$/ }),
   ).toBeHidden();
-  await page.getByRole("button", { name: "Exit replay", exact: true }).click();
+  await finishIntroMedia(page);
+  await expect(scene(page)).toHaveAttribute("data-presentation", "live");
   await expect(scene(page)).toHaveAttribute("data-phase", "completed");
   await expect(scene(page)).toHaveAttribute("data-ambient", "running");
   const resumed = await readLife(page);

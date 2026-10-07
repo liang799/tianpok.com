@@ -66,7 +66,7 @@ export const ScrollAssembly: Story = {
     );
     await expect(scene.querySelector("img, image")).toBeNull();
 
-    // The slider drives the same MotionValue as desktop scrolling. These
+    // The slider drives the same MotionValue as the motion workbench. These
     // diagnostics are published only after the 3D frame has been applied.
     for (const [progress, phase, attached, placed] of [
       [16, "lower", false, false],

@@ -5,6 +5,10 @@
   isolation: isolate;
   pointer-events: none;
 }
+.scene[data-presentation] {
+  overflow: hidden;
+  background: #faf9f6;
+}
 .fallback,
 .canvas {
   position: absolute !important;
@@ -43,4 +47,48 @@
 }
 .scene[data-theme="dark"] .fallback {
   opacity: 0.85;
+}
+.scene[data-presentation]:not([data-presentation="live"]) .canvas,
+.scene[data-presentation]:not([data-presentation="live"]) .siteLabel {
+  visibility: hidden;
+}
+.prerender {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  container-type: size;
+  background: #faf9f6;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 350ms ease,
+    visibility 350ms;
+}
+.prerender[data-visible="false"] {
+  opacity: 0;
+  visibility: hidden;
+}
+.prerenderFrame {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  /* Match the camera's vertical span 12.8 and minimum width 16. The offline
+     frame covers 32 × 20 units, with vertical overscan for narrow windows. */
+  width: min(250cqh, 200cqw);
+  max-width: none;
+  height: auto;
+  aspect-ratio: 8 / 5;
+  transform: translate(-50%, -50%);
+}
+.introVideo {
+  visibility: hidden;
+}
+.prerender[data-playing="true"] .introVideo {
+  visibility: inherit;
+}
+@media (prefers-reduced-motion: reduce) {
+  .prerender {
+    transition: none;
+  }
 }

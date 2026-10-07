@@ -171,54 +171,6 @@ button:focus-visible {
 .construction-track {
   position: relative;
 }
-.construction-track[data-animated="true"] {
-  height: calc(var(--construction-height) + clamp(2400px, 340svh, 3600px));
-}
-.construction-track[data-animated="true"] .construction-stage {
-  position: sticky;
-  top: var(--construction-sticky-top, 0px);
-  min-height: max(590px, calc(100svh - 100px));
-  background: var(--background);
-}
-.construction-cue {
-  position: absolute;
-  left: 0;
-  bottom: 30px;
-  display: grid;
-  gap: 6px;
-  width: fit-content;
-  max-width: 100%;
-  margin-top: 0;
-  color: #62635f;
-  font-size: 10px;
-  line-height: 1.6;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-.construction-cue-label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 24px;
-}
-.construction-cue svg {
-  color: var(--orange);
-  flex-shrink: 0;
-}
-.construction-progress {
-  width: 56px;
-  height: 2px;
-  margin-left: 25px;
-  flex-shrink: 0;
-  background: #dedbd3;
-  overflow: hidden;
-}
-.construction-progress span {
-  display: block;
-  height: 100%;
-  background: var(--orange);
-  transform-origin: left;
-}
 .construction-replay-control {
   position: absolute;
   left: 0;
@@ -241,15 +193,6 @@ button:focus-visible {
 }
 .construction-replay-control:hover {
   color: var(--foreground);
-}
-.construction-replay-exit {
-  left: 350px;
-  padding: 2px 8px;
-  border: 1px solid #dedbd3;
-  border-radius: 4px;
-  background: #faf9f6eb;
-  color: #555851;
-  letter-spacing: 0.08em;
 }
 .hero-copy {
   padding-top: 25px;
@@ -1041,7 +984,6 @@ button:focus-visible {
   }
   .hero-description,
   .hero-actions,
-  .construction-cue,
   .hero-art,
   .hero-atmosphere,
   .hero .blueprint-grid,
@@ -1276,9 +1218,6 @@ button:focus-visible {
     left: 1px;
     height: 35px;
   }
-  .construction-track[data-animated="true"] .hero-location {
-    bottom: 84px;
-  }
   .hero-art {
     right: 0;
     width: 80%;
@@ -1326,16 +1265,6 @@ button:focus-visible {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .construction-track[data-animated="true"] {
-    height: auto;
-  }
-  .construction-track[data-animated="true"] .construction-stage {
-    position: relative;
-    top: auto;
-  }
-  .construction-cue {
-    display: none;
-  }
   html {
     scroll-behavior: auto;
   }

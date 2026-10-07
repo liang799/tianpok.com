@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { CONSTRUCTION_PIECES } from "../src/lib/construction-plan";
+import sharp from "sharp";
 
 test("the workbench supports keyboard tabs, wrapping, and Home/End", async ({
   page,
@@ -243,4 +244,108 @@ test("the workbench fits 320px and reduced motion keeps manual controls usable",
   await expect(scene).toHaveAttribute("data-placed", "false");
   await expect(scene).toHaveAttribute("data-placed-count", "0");
   expect(errors).toEqual([]);
+});
+
+test("the live workbench preserves every pickup phase, all eight placements, and reverse seeks", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(60_000);
+  await page.goto("/");
+  const section = page.locator("#inside-the-build");
+  await section.getByRole("tab", { name: /Motion/ }).click();
+  const panel = section.getByRole("tabpanel", { name: /Motion/ });
+  const scene = panel.getByTestId("desktop-construction-scene");
+  const slider = panel.getByRole("slider", { name: /Assembly progress/ });
+  await expect(scene).toHaveAttribute("data-renderer", "webgl", {
+    timeout: 20_000,
+  });
+  await panel.getByRole("button", { name: "Start", exact: true }).click();
+  await expect(scene).toHaveAttribute("data-phase", "approach");
+  await expect(scene).toHaveAttribute("data-piece-count", "8");
+  await expect(scene).toHaveAttribute("data-placed-count", "0");
+  const before = await scene.locator("canvas").screenshot();
+
+  async function seek(index: number, cycle: number) {
+    const value = (
+      ((index + cycle) / CONSTRUCTION_PIECES.length) *
+      100
+    ).toFixed(1);
+    // Drive the browser input event handled by the real workbench. Its native
+    // keyboard behavior has a separate test; this sweep exercises every lift.
+    await slider.evaluate((element: HTMLInputElement, next) => {
+      const setter = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )!.set!;
+      setter.call(element, next);
+      element.dispatchEvent(new Event("input", { bubbles: true }));
+    }, value);
+    await expect
+      .poll(async () =>
+        Math.abs(
+          Number(await scene.getAttribute("data-progress")) -
+            Number(value) / 100,
+        ),
+      )
+      .toBeLessThan(0.001);
+    await expect(scene).toHaveAttribute(
+      "data-active-piece",
+      CONSTRUCTION_PIECES[index].id,
+    );
+    await expect(scene).toHaveAttribute("data-lift-index", String(index));
+  }
+
+  for (const [cycle, phase, attached, placed] of [
+    [0.16, "lower", false, false],
+    [0.28, "attach", true, false],
+    [0.42, "lift", true, false],
+    [0.59, "slew", true, false],
+    [0.74, "seat", true, false],
+    [0.87, "release", false, true],
+    [0.94, "return", false, true],
+  ] as const) {
+    await seek(0, cycle);
+    await expect(scene).toHaveAttribute("data-phase", phase);
+    await expect(scene).toHaveAttribute("data-attached", String(attached));
+    await expect(scene).toHaveAttribute("data-placed", String(placed));
+  }
+  for (const [index] of CONSTRUCTION_PIECES.entries()) {
+    await seek(index, 0.59);
+    await expect(scene).toHaveAttribute("data-phase", "slew");
+    await expect(scene).toHaveAttribute("data-attached", "true");
+    await expect(scene).toHaveAttribute("data-placed-count", String(index));
+    await seek(index, 0.94);
+    await expect(scene).toHaveAttribute("data-phase", "return");
+    await expect(scene).toHaveAttribute("data-attached", "false");
+    await expect(scene).toHaveAttribute("data-placed-count", String(index + 1));
+  }
+  await panel.getByRole("button", { name: "Complete", exact: true }).click();
+  await expect(scene).toHaveAttribute("data-phase", "completed");
+  await expect(scene).toHaveAttribute("data-placed-count", "8");
+  const after = await scene
+    .locator("canvas")
+    .screenshot({ path: testInfo.outputPath("workbench-complete.png") });
+  const initialPixels = await sharp(before).removeAlpha().raw().toBuffer();
+  const finalPixels = await sharp(after).removeAlpha().raw().toBuffer();
+  expect(finalPixels.length).toBe(initialPixels.length);
+  let changed = 0;
+  for (let i = 0; i < initialPixels.length; i += 3) {
+    if (
+      Math.max(
+        Math.abs(initialPixels[i] - finalPixels[i]),
+        Math.abs(initialPixels[i + 1] - finalPixels[i + 1]),
+        Math.abs(initialPixels[i + 2] - finalPixels[i + 2]),
+      ) > 20
+    )
+      changed++;
+  }
+  expect(changed / (initialPixels.length / 3)).toBeGreaterThan(0.002);
+  await seek(4, 0.16);
+  await expect(scene).toHaveAttribute("data-placed-count", "4");
+  await seek(3, 0.74);
+  await expect(scene).toHaveAttribute("data-placed-count", "3");
+  await expect(scene).toHaveAttribute("data-attached", "true");
+  await seek(3, 0.16);
+  await expect(scene).toHaveAttribute("data-placed-count", "3");
+  await expect(scene).toHaveAttribute("data-attached", "false");
 });
