@@ -139,9 +139,11 @@ export default function DesktopConstructionScene({
 
   return (
     <svg
-      className={className}
+      className={`block h-auto max-w-full ${className}`}
       data-testid="desktop-construction-scene"
       viewBox="0 0 1536 1024"
+      width="1536"
+      height="1024"
       preserveAspectRatio="xMaxYMax meet"
       aria-hidden="true"
       focusable="false"

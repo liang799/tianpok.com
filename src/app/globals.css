@@ -181,11 +181,10 @@ button:focus-visible {
 }
 .construction-cue {
   position: absolute;
-  left: 225px;
+  left: 0;
   bottom: 30px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
+  display: grid;
+  gap: 6px;
   width: fit-content;
   max-width: 100%;
   margin-top: 0;
@@ -208,6 +207,7 @@ button:focus-visible {
 .construction-progress {
   width: 56px;
   height: 2px;
+  margin-left: 25px;
   flex-shrink: 0;
   background: #dedbd3;
   overflow: hidden;
@@ -299,9 +299,10 @@ button:focus-visible {
   width: 15px;
 }
 .hero-location {
-  position: relative;
-  margin-top: 42px;
-  padding-top: 42px;
+  position: absolute;
+  left: 0;
+  bottom: 84px;
+  padding-left: 25px;
   color: #686a66;
   font-size: 10px;
   line-height: 1.7;
@@ -311,7 +312,8 @@ button:focus-visible {
 .hero-location::before {
   content: "";
   position: absolute;
-  top: 0;
+  top: 2px;
+  left: 7px;
   width: 1px;
   height: 31px;
   background: #ff502766;
@@ -369,14 +371,25 @@ button:focus-visible {
   height: calc(100% + 5px);
   z-index: 1;
   pointer-events: none;
-  mask-image: linear-gradient(90deg, transparent, #000 10%);
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
 }
 .hero-art > svg,
-.desktop-construction-fallback,
 .desktop-construction-fallback img {
-  width: 100%;
-  height: 100%;
+  /* Keep the mask on the actual 3:2 artwork, not its letterboxed wrapper. */
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
   display: block;
+  mask-image:
+    linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent),
+    linear-gradient(transparent, #000 2%);
+  mask-composite: intersect;
+}
+.desktop-construction-fallback {
+  display: contents;
 }
 .desktop-construction-fallback img {
   object-fit: contain;
@@ -870,9 +883,6 @@ button:focus-visible {
   }
 }
 @media (max-width: 900px) {
-  .construction-cue {
-    margin-top: 16px;
-  }
   .primary-navigation {
     gap: 15px;
     margin-right: 24px;
@@ -885,6 +895,7 @@ button:focus-visible {
   }
   .hero-copy {
     padding-top: 40px;
+    width: min(100%, 460px);
   }
   .hero-heading {
     font-size: 5.4vw;
@@ -917,6 +928,11 @@ button:focus-visible {
   .about-art {
     width: 100%;
     opacity: 0.4;
+  }
+}
+@media (min-width: 640px) and (max-width: 700px) {
+  .hero-art {
+    width: 70%;
   }
 }
 @media (max-width: 639px) {
