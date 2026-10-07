@@ -1,0 +1,101 @@
+{
+  "width": 1600,
+  "height": 1000,
+  "fps": 24,
+  "duration": 14,
+  "frames": 336,
+  "verticalOverscan": 1.5625,
+  "background": "#faf9f6",
+  "finalCameraWorldWidth": 32,
+  "finalCameraWorldHeight": 20,
+  "fontFamily": "Inter, \"Inter Fallback\", Arial, sans-serif",
+  "assets": [
+    {
+      "name": "construction-intro.mp4",
+      "bytes": 978591
+    },
+    {
+      "name": "construction-intro-start.webp",
+      "bytes": 103766
+    },
+    {
+      "name": "construction-intro-poster.webp",
+      "bytes": 123812
+    }
+  ],
+  "checkpoints": [
+    {
+      "frame": 0,
+      "progress": 0,
+      "phase": "approach",
+      "placed": 0,
+      "pieces": 8
+    },
+    {
+      "frame": 35,
+      "progress": 0.1054510058403634,
+      "phase": "release",
+      "placed": 1,
+      "pieces": 8
+    },
+    {
+      "frame": 69,
+      "progress": 0.2290071382219338,
+      "phase": "release",
+      "placed": 2,
+      "pieces": 8
+    },
+    {
+      "frame": 103,
+      "progress": 0.35256327060350423,
+      "phase": "release",
+      "placed": 3,
+      "pieces": 8
+    },
+    {
+      "frame": 138,
+      "progress": 0.4797534068786502,
+      "phase": "release",
+      "placed": 4,
+      "pieces": 8
+    },
+    {
+      "frame": 172,
+      "progress": 0.6033095392602206,
+      "phase": "release",
+      "placed": 5,
+      "pieces": 8
+    },
+    {
+      "frame": 207,
+      "progress": 0.7304996755353668,
+      "phase": "release",
+      "placed": 6,
+      "pieces": 8
+    },
+    {
+      "frame": 241,
+      "progress": 0.854055807916937,
+      "phase": "release",
+      "placed": 7,
+      "pieces": 8
+    },
+    {
+      "frame": 275,
+      "progress": 0.9776119402985074,
+      "phase": "release",
+      "placed": 8,
+      "pieces": 8
+    }
+  ],
+  "finalFrameMatch": {
+    "changedPixels": 9,
+    "totalPixels": 1024000,
+    "maximumChannelDifference": 64,
+    "changedFraction": 0.0000087890625
+  },
+  "captureSeconds": 39.755162458,
+  "encodeSeconds": 2.2271707089999984,
+  "totalSeconds": 45.058033625,
+  "reproduce": "node scripts/render-construction-intro.mjs"
+}

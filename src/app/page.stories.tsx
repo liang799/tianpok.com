@@ -54,16 +54,32 @@ export const Desktop: Story = {
       "https://github.com/liang799",
     );
     const scene = hero.getByTestId("desktop-construction-scene");
+    await expect(scene).toHaveAttribute("data-presentation", "intro");
+    const video = hero.getByTestId<HTMLVideoElement>(
+      "construction-intro-video",
+    );
+    await waitFor(
+      () =>
+        expect(Number.isFinite(video.duration) && video.duration > 0).toBe(
+          true,
+        ),
+      { timeout: 10_000 },
+    );
+    video.currentTime = Math.max(0, video.duration - 0.04);
+    await video.play();
     await waitFor(
       () => {
         expect(scene).toHaveAttribute("data-renderer", "webgl");
+        expect(scene).toHaveAttribute("data-presentation", "live");
         expect(scene.querySelector("canvas")).toBeVisible();
         expect(scene).toHaveAttribute("data-phase", "completed");
         expect(scene).toHaveAttribute("data-placed-count", "8");
       },
       { timeout: 10_000 },
     );
-    await expect(scene.querySelector("img, image")).toBeNull();
+    await expect(
+      scene.querySelector('[data-testid="construction-fallback"]'),
+    ).toBeNull();
     const track = canvas.getByTestId("construction-track");
     await expect(track).toHaveAttribute("data-animated", "false");
     await waitFor(() =>
@@ -82,15 +98,17 @@ export const Desktop: Story = {
       hero.getByRole("button", { name: "Replay the build" }),
     );
     await waitFor(() => {
-      expect(track).toHaveAttribute("data-animated", "true");
-      expect(scene).toHaveAttribute("data-phase", "approach");
-      expect(scene).toHaveAttribute("data-placed-count", "0");
+      expect(track).toHaveAttribute("data-animated", "false");
+      expect(scene).toHaveAttribute("data-presentation", "intro");
+      expect(scene).toHaveAttribute("data-phase", "completed");
+      expect(scene).toHaveAttribute("data-placed-count", "8");
       expect(scene).toHaveAttribute("data-ambient", "paused");
-      expect(Number(scene.getAttribute("data-progress"))).toBeLessThan(0.001);
+      expect(Number(scene.getAttribute("data-progress"))).toBe(1);
     });
-    await userEvent.click(hero.getByRole("button", { name: "Exit replay" }));
+    await userEvent.click(hero.getByRole("button", { name: "Skip intro" }));
     await waitFor(() => {
       expect(track).toHaveAttribute("data-animated", "false");
+      expect(scene).toHaveAttribute("data-presentation", "live");
       expect(scene).toHaveAttribute("data-phase", "completed");
       expect(scene).toHaveAttribute("data-placed-count", "8");
       expect(scene).toHaveAttribute("data-ambient", "running");

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import sharp from "sharp";
 import { CONSTRUCTION_PIECES } from "../src/lib/construction-plan";
+import { enterLiveHero, expectNormalHeroFlow, heroScene } from "./hero-helpers";
 
 for (const reducedMotion of ["no-preference", "reduce"] as const) {
   test(`desktop renders a transparent, nonblank 3D scene with ${reducedMotion} motion`, async ({
@@ -23,7 +24,8 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
       "false",
     );
 
-    const scene = page.getByTestId("desktop-construction-scene");
+    await enterLiveHero(page);
+    const scene = heroScene(page);
     await expect(scene).toHaveAttribute("data-renderer", "webgl", {
       timeout: 20_000,
     });
@@ -32,7 +34,7 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
       "data-placed-count",
       String(CONSTRUCTION_PIECES.length),
     );
-    await expect(page.locator(".hero-art img, .hero-art image")).toHaveCount(0);
+    await expect(scene.getByTestId("construction-fallback")).toBeHidden();
     const canvas = scene.locator("canvas");
     await expect(canvas).toBeVisible();
     const renderedBounds = await canvas.boundingBox();
@@ -45,44 +47,6 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
         return context?.getContextAttributes()?.alpha;
       }),
     ).toBe(true);
-
-    if (reducedMotion === "no-preference") {
-      await page.getByRole("button", { name: "Replay the build" }).click();
-      await expect(page.getByTestId("construction-track")).toHaveAttribute(
-        "data-animated",
-        "true",
-      );
-      await expect
-        .poll(async () => Number(await scene.getAttribute("data-progress")))
-        .toBeLessThan(0.001);
-      const index = CONSTRUCTION_PIECES.length - 1;
-      const progress = (index + 0.59) / CONSTRUCTION_PIECES.length;
-      const track = await page.getByTestId("construction-track").boundingBox();
-      const stage = page.getByTestId("construction-stage");
-      const stageBounds = await stage.boundingBox();
-      const stickyTop = await stage.evaluate((element) =>
-        parseFloat(getComputedStyle(element).top),
-      );
-      await page.mouse.move(20, 200);
-      await page.mouse.wheel(
-        0,
-        track!.y - stickyTop + (track!.height - stageBounds!.height) * progress,
-      );
-      await expect
-        .poll(async () =>
-          Math.abs(
-            Number(await scene.getAttribute("data-progress")) - progress,
-          ),
-        )
-        .toBeLessThan(0.001);
-      await expect(scene).toHaveAttribute("data-phase", "slew");
-      await expect(scene).toHaveAttribute("data-attached", "true");
-      await expect(scene).toHaveAttribute(
-        "data-active-piece",
-        CONSTRUCTION_PIECES[index].id,
-      );
-      await expect(scene).toHaveAttribute("data-placed-count", String(index));
-    }
 
     const screenshot = await canvas.screenshot({
       animations: "disabled",
@@ -131,62 +95,24 @@ for (const width of [640, 768, 1260, 1440, 1536, 1632]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
     await page.evaluate(() => document.fonts.ready);
-    const control = page.getByRole("button", {
-      name: "Replay the build",
-      exact: true,
-    });
-    await expect(control).toBeVisible();
-    const description = await page.locator(".hero-description").boundingBox();
-    const controlBounds = await control.boundingBox();
-    expect(controlBounds!.x).toBeCloseTo(description!.x, 0);
-    const location = await page.locator(".hero-location").boundingBox();
-    const actions = await page.locator(".hero-actions").boundingBox();
-    expect(actions!.y + actions!.height).toBeLessThan(location!.y);
-    expect(location!.y + location!.height + 12).toBeLessThanOrEqual(
-      controlBounds!.y,
-    );
-
-    const stage = await page.getByTestId("construction-stage").boundingBox();
-    for (const selector of [
-      ".hero-actions",
-      ".hero-location",
-      ".construction-replay-control",
-    ]) {
-      const detail = await page.locator(selector).boundingBox();
-      expect(
-        detail!.y + detail!.height,
-        `${selector} must fit inside the hero`,
-      ).toBeLessThan(stage!.y + stage!.height);
-    }
-
-    await control.click();
-    const cue = page.locator(".construction-cue");
-    await expect(cue).toBeVisible();
-    const cueBounds = await cue.boundingBox();
-    const replayDescription = await page
-      .locator(".hero-description")
-      .boundingBox();
-    const replayLocation = await page.locator(".hero-location").boundingBox();
-    const replayActions = await page.locator(".hero-actions").boundingBox();
-    const replayStage = await page
-      .getByTestId("construction-stage")
-      .boundingBox();
-    expect(cueBounds!.x).toBeCloseTo(replayDescription!.x, 0);
-    expect(replayActions!.y + replayActions!.height).toBeLessThan(
-      replayLocation!.y,
-    );
-    expect(replayLocation!.y + replayLocation!.height + 12).toBeLessThan(
-      cueBounds!.y,
-    );
-    for (const selector of [
-      ".construction-cue",
-      ".construction-replay-control",
-    ]) {
-      const detail = await page.locator(selector).boundingBox();
-      expect(
-        detail!.y + detail!.height,
-        `${selector} must fit inside the hero during replay`,
-      ).toBeLessThan(replayStage!.y + replayStage!.height);
+    for (const name of ["Skip intro", "Replay the build"] as const) {
+      if (name === "Replay the build") await enterLiveHero(page);
+      const control = page.getByRole("button", { name, exact: true });
+      await expect(control).toBeVisible();
+      const description = await page.locator(".hero-description").boundingBox();
+      const controlBounds = await control.boundingBox();
+      const location = await page.locator(".hero-location").boundingBox();
+      const actions = await page.locator(".hero-actions").boundingBox();
+      expect(controlBounds!.x).toBeCloseTo(description!.x, 0);
+      expect(actions!.y + actions!.height).toBeLessThan(location!.y);
+      expect(location!.y + location!.height + 12).toBeLessThanOrEqual(
+        controlBounds!.y,
+      );
+      const stage = await page.getByTestId("construction-stage").boundingBox();
+      for (const detail of [actions!, location!, controlBounds!]) {
+        expect(detail.y + detail.height).toBeLessThan(stage!.y + stage!.height);
+      }
+      await expectNormalHeroFlow(page);
     }
   });
 }

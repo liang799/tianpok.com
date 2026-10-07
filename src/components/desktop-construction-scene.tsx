@@ -15,6 +15,7 @@ import type { CraneSample } from "@/lib/crane-choreography";
 import type { SiteLifeFrame } from "./construction-3d/ambient-life";
 import { CONSTRUCTION_PIECES } from "@/lib/construction-plan";
 import { ConstructionFallback } from "./construction-3d/fallback";
+import { ConstructionIntro } from "./construction-3d/intro";
 import styles from "./construction-3d/scene.module.css";
 
 const ConstructionCanvas = dynamic(() => import("./construction-3d/canvas"), {
@@ -29,6 +30,10 @@ type SceneProps = {
   dark?: boolean;
   overview?: boolean;
   ambientMotion?: boolean;
+  intro?: boolean;
+  introReplay?: number;
+  skipIntro?: boolean;
+  onIntroComplete?: () => void;
   onRendererChange?: (renderer: Renderer) => void;
 };
 
@@ -47,6 +52,12 @@ function motionAvailable() {
     !document.hidden &&
     !window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
+}
+
+function motionPreference() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "reduce"
+    : "full";
 }
 
 class CanvasBoundary extends Component<
@@ -73,25 +84,51 @@ export default function DesktopConstructionScene({
   dark = false,
   overview = false,
   ambientMotion = false,
+  intro = false,
+  introReplay = 0,
+  skipIntro = false,
+  onIntroComplete,
   onRendererChange,
 }: SceneProps) {
   const host = useRef<HTMLDivElement>(null);
   const siteLabel = useRef<HTMLDivElement>(null);
   const [nearViewport, setNearViewport] = useState(false);
   const [inViewport, setInViewport] = useState(false);
+  const [prepared, setPrepared] = useState(false);
+  const [completedIntro, setCompletedIntro] = useState(-1);
+  const preference = useSyncExternalStore(
+    subscribeMotionAvailability,
+    motionPreference,
+    () => "unknown",
+  );
   const motionAllowed = useSyncExternalStore(
     subscribeMotionAvailability,
     motionAvailable,
     () => false,
   );
   const [renderer, setRenderer] = useState<Renderer>("loading");
+  const introComplete =
+    !intro ||
+    skipIntro ||
+    completedIntro === introReplay ||
+    preference === "reduce";
+  const presentation = !introComplete
+    ? "intro"
+    : renderer === "webgl"
+      ? "live"
+      : "poster";
+  const finishIntro = useCallback(() => {
+    setCompletedIntro(introReplay);
+    onIntroComplete?.();
+  }, [introReplay, onIntroComplete]);
   const ambientRunning =
     ambientMotion &&
     overview &&
     !animated &&
     inViewport &&
     motionAllowed &&
-    renderer === "webgl";
+    renderer === "webgl" &&
+    (!intro || presentation === "live");
   const reportRenderer = useCallback(
     (next: Renderer) => {
       setRenderer(next);
@@ -164,6 +201,20 @@ export default function DesktopConstructionScene({
     };
   }, []);
 
+  useEffect(() => {
+    if (!intro || !nearViewport) return;
+    // Give the poster/video a paint before mounting the heavier scene. WebGL
+    // prepares once in the background and stays mounted across video replays.
+    if ("requestIdleCallback" in window) {
+      const idle = window.requestIdleCallback(() => setPrepared(true), {
+        timeout: 600,
+      });
+      return () => window.cancelIdleCallback(idle);
+    }
+    const timer = setTimeout(() => setPrepared(true), 100);
+    return () => clearTimeout(timer);
+  }, [intro, nearViewport]);
+
   return (
     <div
       ref={host}
@@ -172,15 +223,16 @@ export default function DesktopConstructionScene({
       data-renderer={renderer}
       data-theme={dark ? "dark" : "light"}
       data-overview={overview}
+      data-presentation={intro ? presentation : undefined}
       data-ambient={ambientRunning ? "running" : "paused"}
       aria-hidden="true"
     >
-      {renderer !== "webgl" && (
+      {!intro && renderer !== "webgl" && (
         <div className={styles.fallback}>
           <ConstructionFallback />
         </div>
       )}
-      {nearViewport && renderer !== "fallback" && (
+      {nearViewport && (!intro || prepared) && renderer !== "fallback" && (
         <CanvasBoundary onFailure={failed}>
           <ConstructionCanvas
             progress={progress}
@@ -188,6 +240,7 @@ export default function DesktopConstructionScene({
             dark={dark}
             overview={overview}
             ambientMotion={ambientRunning}
+            ambientCycle={introReplay}
             onLifeFrame={lifeFrame}
             onProjectLabel={projectLabel}
             onReady={ready}
@@ -205,6 +258,16 @@ export default function DesktopConstructionScene({
         tomorrow
         <span />
       </div>
+      {intro && (
+        <ConstructionIntro
+          key={introReplay}
+          enabled={nearViewport && preference === "full"}
+          active={inViewport && motionAllowed}
+          complete={introComplete}
+          visible={presentation !== "live"}
+          onComplete={finishIntro}
+        />
+      )}
     </div>
   );
 }

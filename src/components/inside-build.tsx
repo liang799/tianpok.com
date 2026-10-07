@@ -44,9 +44,9 @@ const layers = [
     title: "Motion & safeguards",
     tag: "THREE.JS · ACCESSIBILITY",
     file: "src/lib/crane-choreography.ts",
-    heading: "Movement with a fallback.",
+    heading: "A build that is ready before the renderer.",
     description:
-      "Native scroll drives a shared spring and a real 3D crane. Eight lifts build the structure from separate pieces. One deterministic model keeps every piece and the lifting rig connected in either direction. A static vector scene keeps the architecture visible without WebGL.",
+      "A prerendered film builds the hero while the live scene prepares, then hands over to moving workers and drones. The same eight-lift choreography powers this workbench, where you can inspect every piece in either direction. A matching poster keeps the hero visible without WebGL.",
     code: `// One progress value, a complete 3D pose\nconst frame = sampleCrane(progress);\n\ncrane.rotation.y = frame.boomRotation;\nload.position.set(...frame.loadPosition);\n\n// Seek backward to reverse the same lift.\nsampleCrane(0.5);`,
   },
 ] as const;
@@ -81,7 +81,7 @@ function MotionWorkbench() {
       <div className={styles.motionPreview}>
         <div className={styles.previewCaption}>
           <span>LIVE COMPONENT</span>
-          <span>Scroll → spring → 3D scene</span>
+          <span>Progress → spring → 3D scene</span>
         </div>
         <DesktopConstructionScene
           progress={reducedMotion ? input : smooth}

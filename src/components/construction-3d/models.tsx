@@ -1,8 +1,20 @@
 "use client";
 
 import { memo, useLayoutEffect, useMemo, useRef } from "react";
-import type {} from "@react-three/fiber";
-import { Euler, InstancedMesh, Matrix4, Quaternion, Vector3 } from "three";
+import { useThree } from "@react-three/fiber";
+import {
+  BoxGeometry,
+  CylinderGeometry,
+  Euler,
+  InstancedMesh,
+  Matrix4,
+  Quaternion,
+  SphereGeometry,
+  TorusGeometry,
+  Vector3,
+  type BufferGeometry,
+  type WebGLRenderer,
+} from "three";
 import {
   CONSTRUCTION_PIECES,
   PICKUP_SURFACE_HEIGHT,
@@ -19,6 +31,49 @@ type Part = {
 };
 type Shape = "box" | "cylinder" | "sphere" | "eye" | "cloud";
 type Collection = Record<string, Part[]>;
+
+const geometryFactories: Record<Shape, () => BufferGeometry> = {
+  box: () => new BoxGeometry(1, 1, 1),
+  cylinder: () => new CylinderGeometry(1, 1, 1, 10),
+  sphere: () => new SphereGeometry(1, 10, 6),
+  eye: () => new TorusGeometry(0.085, 0.021, 6, 12),
+  cloud: () => new SphereGeometry(1, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+};
+type SharedGeometry = {
+  geometry: BufferGeometry;
+  retain: () => () => void;
+};
+const sceneGeometries = new WeakMap<
+  WebGLRenderer,
+  Map<Shape, SharedGeometry>
+>();
+
+function getPartGeometry(renderer: WebGLRenderer, shape: Shape) {
+  let catalog = sceneGeometries.get(renderer);
+  if (!catalog) {
+    catalog = new Map();
+    sceneGeometries.set(renderer, catalog);
+  }
+  let shared = catalog.get(shape);
+  if (!shared) {
+    const geometry = geometryFactories[shape]();
+    let users = 0;
+    shared = {
+      geometry,
+      retain: () => {
+        users++;
+        return () => {
+          users--;
+          // Each canvas owns its catalog; removing one material batch must not
+          // release buffers used by another. The CPU shape remains reusable.
+          if (users === 0) geometry.dispose();
+        };
+      },
+    };
+    catalog.set(shape, shared);
+  }
+  return shared;
+}
 
 const ORANGE = "#ed5728";
 const ORANGE_LIGHT = "#ff7947";
@@ -67,6 +122,13 @@ const Parts = memo(function Parts({
   unlit?: boolean;
 }) {
   const ref = useRef<InstancedMesh>(null);
+  const renderer = useThree((state) => state.gl);
+  const shared = useMemo(
+    () => getPartGeometry(renderer, shape),
+    [renderer, shape],
+  );
+
+  useLayoutEffect(() => shared.retain(), [shared]);
 
   useLayoutEffect(() => {
     const mesh = ref.current;
@@ -94,16 +156,10 @@ const Parts = memo(function Parts({
     <instancedMesh
       ref={ref}
       args={[undefined, undefined, items.length]}
+      geometry={shared.geometry}
       castShadow={castShadow}
       receiveShadow
     >
-      {shape === "box" && <boxGeometry args={[1, 1, 1]} />}
-      {shape === "cylinder" && <cylinderGeometry args={[1, 1, 1, 10]} />}
-      {shape === "sphere" && <sphereGeometry args={[1, 10, 6]} />}
-      {shape === "eye" && <torusGeometry args={[0.085, 0.021, 6, 12]} />}
-      {shape === "cloud" && (
-        <sphereGeometry args={[1, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-      )}
       {unlit ? (
         <meshBasicMaterial color={color} toneMapped={false} />
       ) : (

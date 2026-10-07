@@ -40,7 +40,9 @@ export const StructureInspection: Story = {
       panel.getByRole("button", { name: /Motion & safeguards/ }),
     );
     await expect(
-      panel.getByRole("heading", { name: "Movement with a fallback." }),
+      panel.getByRole("heading", {
+        name: "A build that is ready before the renderer.",
+      }),
     ).toBeVisible();
     await expect(
       panel.getByRole("link", { name: "View source" }),

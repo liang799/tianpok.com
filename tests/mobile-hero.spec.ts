@@ -60,10 +60,19 @@ for (const viewport of [
   test(`mobile hero fits ${viewport.width}px with readable text and a loaded illustration`, async ({
     page,
   }, testInfo) => {
+    const desktopMediaRequests: string[] = [];
+    page.on("request", (request) => {
+      if (/\/media\/construction-intro/.test(request.url()))
+        desktopMediaRequests.push(request.url());
+    });
     await page.setViewportSize(viewport);
     await page.goto("/");
     await page.evaluate(() => document.fonts.ready);
     await expectMobileHero(page);
+    expect(
+      desktopMediaRequests,
+      "Mobile must not download the desktop intro or poster",
+    ).toEqual([]);
     await expect(page.getByRole("heading", { level: 1 })).toBeInViewport();
     if (viewport.width === 390) {
       await page.getByTestId("construction-stage").screenshot({

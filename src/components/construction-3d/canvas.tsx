@@ -23,12 +23,22 @@ import {
 import styles from "./scene.module.css";
 import { SiteLife, type SiteLifeFrame } from "./ambient-life";
 
+/** Offline authoring input; ignored by the production renderer. */
+export type ConstructionCaptureFrame = {
+  id: number;
+  progress: number;
+  presentation: number;
+  overscan?: number;
+};
+
 type CanvasProps = {
   progress?: MotionValue<number>;
   animated: boolean;
   dark: boolean;
   overview?: boolean;
   ambientMotion?: boolean;
+  ambientCycle?: number;
+  captureFrame?: ConstructionCaptureFrame;
   onLifeFrame: (frame: SiteLifeFrame) => void;
   onProjectLabel: (x: number, y: number, fontSize: number) => void;
   onReady: () => void;
@@ -54,25 +64,37 @@ function AmbientFrames({ running }: { running: boolean }) {
 
 function CameraFrame({
   overview = false,
+  captureFrame,
   onProjectLabel,
-}: Pick<CanvasProps, "overview" | "onProjectLabel">) {
+}: Pick<CanvasProps, "overview" | "captureFrame" | "onProjectLabel">) {
   const { camera, size, invalidate } = useThree();
   useLayoutEffect(() => {
-    fitCamera(camera as OrthographicCamera, size.width, size.height, overview);
+    fitCamera(
+      camera as OrthographicCamera,
+      size.width,
+      size.height,
+      captureFrame?.presentation ?? Number(overview),
+      captureFrame?.overscan ?? 1,
+    );
     camera.updateMatrixWorld();
     const label = new Vector3(7.3, 0.6, 1.27).project(camera);
     const ortho = camera as OrthographicCamera;
     const labelFontSize = (size.height / (ortho.top - ortho.bottom)) * 0.2;
     onProjectLabel(
-      Math.min(
-        ((label.x + 1) * size.width) / 2,
-        size.width - labelFontSize * 10,
-      ),
+      ((label.x + 1) * size.width) / 2,
       ((1 - label.y) * size.height) / 2,
       labelFontSize,
     );
     invalidate();
-  }, [camera, size.width, size.height, invalidate, overview, onProjectLabel]);
+  }, [
+    camera,
+    size.width,
+    size.height,
+    invalidate,
+    overview,
+    captureFrame,
+    onProjectLabel,
+  ]);
   return null;
 }
 
@@ -81,21 +103,32 @@ function fitCamera(
   camera: OrthographicCamera,
   width: number,
   viewportHeight: number,
-  overview: boolean,
+  presentation: number,
+  overscan: number,
 ) {
-  const aspect = width / Math.max(1, viewportHeight);
-  const height = overview
-    ? Math.max(12.8, 16 / aspect)
-    : Math.max(16.6, 19 / aspect);
-  camera.left = (-height * aspect) / 2;
-  camera.right = (height * aspect) / 2;
+  const aspect = (width / Math.max(1, viewportHeight)) * overscan;
+  const height =
+    blend(
+      Math.max(16.6, 19 / aspect),
+      Math.max(12.8, 16 / aspect),
+      presentation,
+    ) * overscan;
+  const renderedAspect = width / Math.max(1, viewportHeight);
+  camera.left = (-height * renderedAspect) / 2;
+  camera.right = (height * renderedAspect) / 2;
   camera.top = height / 2;
   camera.bottom = -height / 2;
-  const centerX = overview ? -2.4 : -0.8;
-  const centerY = overview ? 3.3 : 4.1;
+  const centerX = blend(-0.8, -2.4, presentation);
+  const centerY = blend(4.1, 3.3, presentation);
   camera.position.set(centerX - 12, centerY + 5.6, 28);
   camera.lookAt(centerX, centerY, 0);
   camera.updateProjectionMatrix();
+}
+
+function blend(from: number, to: number, amount: number) {
+  if (amount <= 0) return from;
+  if (amount >= 1) return to;
+  return from + (to - from) * amount;
 }
 
 const pieceEyes = CONSTRUCTION_PIECES.map(liftingEyes);
@@ -105,12 +138,15 @@ function CraneSequence({
   progress,
   animated,
   overview = false,
+  captureFrame,
   onReady,
   onFailure,
   onFrame,
 }: CanvasProps) {
   const { gl, invalidate } = useThree();
   const boom = useRef<Group>(null);
+  const tower = useRef<Group>(null);
+  const presentationCrate = useRef<Group>(null);
   const trolley = useRef<Group>(null);
   const cable = useRef<Group>(null);
   const hook = useRef<Group>(null);
@@ -129,7 +165,7 @@ function CraneSequence({
     invalidate();
     if (!animated) return;
     return progress?.on("change", () => invalidate());
-  }, [progress, animated, invalidate]);
+  }, [progress, animated, captureFrame, invalidate]);
   useEffect(() => {
     const canvas = gl.domElement;
     const lost = (event: Event) => {
@@ -146,25 +182,43 @@ function CraneSequence({
 
   useFrame(() => {
     const value =
-      animated && progress ? Math.max(0, Math.min(1, progress.get())) : 1;
-    const frameKey = `${value}:${overview}`;
+      captureFrame?.progress ??
+      (animated && progress ? Math.max(0, Math.min(1, progress.get())) : 1);
+    const presentation = captureFrame?.presentation ?? Number(overview);
+    const frameKey = `${value}:${overview}:${captureFrame?.id ?? ""}`;
     if (frameKey === lastFrame.current && !firstFrame.current) return;
     lastFrame.current = frameKey;
     const sample = sampleCrane(value);
-    const angle = overview ? 2.7367 : sample.boomRotation;
-    const radius = overview ? 4.8 : sample.trolleyRadius;
-    const worldRadius = overview ? radius * 0.68 : radius;
-    const boomHeight = overview ? 7.6 : BOOM_HEIGHT;
-    const hookPosition = overview
-      ? [
-          CRANE_BASE[0] + Math.cos(angle) * worldRadius,
-          6.95,
-          CRANE_BASE[2] - Math.sin(angle) * worldRadius,
-        ]
-      : sample.hookPosition;
+    const angle = blend(sample.boomRotation, 2.7367, presentation);
+    const scaleX = blend(1, 0.68, presentation);
+    const worldRadius = blend(sample.trolleyRadius, 4.8 * 0.68, presentation);
+    const radius = worldRadius / scaleX;
+    const boomHeight = blend(BOOM_HEIGHT, 7.6, presentation);
+    const hookPosition =
+      presentation <= 0
+        ? sample.hookPosition
+        : [
+            CRANE_BASE[0] + Math.cos(angle) * worldRadius,
+            blend(sample.hookPosition[1], 6.95, presentation),
+            CRANE_BASE[2] - Math.sin(angle) * worldRadius,
+          ];
+    tower.current?.scale.set(
+      blend(1, 0.65, presentation),
+      boomHeight / BOOM_HEIGHT,
+      blend(1, 0.65, presentation),
+    );
     if (boom.current) {
       boom.current.rotation.y = angle;
       boom.current.position.y = boomHeight;
+      boom.current.scale.set(
+        scaleX,
+        blend(1, 0.62, presentation),
+        blend(1, 0.65, presentation),
+      );
+    }
+    if (presentationCrate.current) {
+      presentationCrate.current.visible = presentation > 0;
+      presentationCrate.current.scale.setScalar(presentation);
     }
     if (trolley.current) trolley.current.position.x = radius;
     if (cable.current) {
@@ -224,17 +278,10 @@ function CraneSequence({
 
   return (
     <>
-      <group
-        position={CRANE_BASE}
-        scale={overview ? [0.65, 7.6 / BOOM_HEIGHT, 0.65] : [1, 1, 1]}
-      >
+      <group ref={tower} position={CRANE_BASE}>
         <CraneTower />
       </group>
-      <group
-        ref={boom}
-        position={[CRANE_BASE[0], BOOM_HEIGHT, CRANE_BASE[2]]}
-        scale={overview ? [0.68, 0.62, 0.65] : [1, 1, 1]}
-      >
+      <group ref={boom} position={[CRANE_BASE[0], BOOM_HEIGHT, CRANE_BASE[2]]}>
         <CraneBoom />
         <group ref={trolley}>
           <CraneTrolley />
@@ -254,7 +301,11 @@ function CraneSequence({
       </group>
       <group ref={hook}>
         <CraneHook />
-        {overview && <SuspendedCrate />}
+        {(overview || Boolean(captureFrame)) && (
+          <group ref={presentationCrate}>
+            <SuspendedCrate />
+          </group>
+        )}
       </group>
       {CONSTRUCTION_PIECES.map((piece, index) => (
         <group
@@ -327,12 +378,21 @@ function SuspendedCrate() {
 }
 
 export default function ConstructionCanvas(props: CanvasProps) {
+  const captureFrame =
+    process.env.NODE_ENV === "production" ? undefined : props.captureFrame;
+  const presentation =
+    captureFrame?.presentation ?? Number(Boolean(props.overview));
   return (
     <Canvas
       className={styles.canvas}
       orthographic
       camera={{ position: [15, 12, 22], near: 0.1, far: 120 }}
-      gl={{ alpha: true, antialias: true, powerPreference: "low-power" }}
+      gl={{
+        alpha: true,
+        antialias: true,
+        powerPreference: "low-power",
+        preserveDrawingBuffer: Boolean(captureFrame),
+      }}
       dpr={[1, 1.5]}
       frameloop="demand"
       shadows="soft"
@@ -340,6 +400,7 @@ export default function ConstructionCanvas(props: CanvasProps) {
     >
       <CameraFrame
         overview={props.overview}
+        captureFrame={captureFrame}
         onProjectLabel={props.onProjectLabel}
       />
       <AmbientFrames running={Boolean(props.ambientMotion)} />
@@ -369,13 +430,14 @@ export default function ConstructionCanvas(props: CanvasProps) {
         color="#ffb277"
       />
       <CityBackdrop />
-      <BuildingSite overview={props.overview} />
+      <BuildingSite overview={presentation >= 0.5} />
       <SiteLife
+        key={props.ambientCycle ?? 0}
         running={Boolean(props.ambientMotion)}
         overview={props.overview}
         onFrame={props.onLifeFrame}
       />
-      <CraneSequence {...props} />
+      <CraneSequence {...props} captureFrame={captureFrame} />
     </Canvas>
   );
 }
