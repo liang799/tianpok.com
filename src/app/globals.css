@@ -110,6 +110,56 @@ button:focus-visible {
   min-height: 590px;
   border-bottom: 1px solid #eee9e2;
 }
+.construction-track {
+  position: relative;
+}
+.construction-track[data-animated="true"] {
+  height: calc(var(--construction-height) + clamp(540px, 90svh, 960px));
+}
+.construction-track[data-animated="true"] .construction-stage {
+  position: sticky;
+  top: var(--construction-sticky-top, 0px);
+  min-height: max(590px, 100svh);
+  background: var(--background);
+}
+.construction-cue {
+  position: absolute;
+  top: 62px;
+  left: 62%;
+  width: 195px;
+  color: #62635f;
+  font-size: 10px;
+  line-height: 1.6;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.construction-cue-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 24px;
+}
+.construction-cue svg {
+  color: var(--orange);
+  flex-shrink: 0;
+}
+.construction-progress {
+  width: 104px;
+  height: 2px;
+  margin-top: 14px;
+  margin-left: 25px;
+  background: #dedbd3;
+  overflow: hidden;
+}
+.construction-progress span {
+  display: block;
+  height: 100%;
+  background: var(--orange);
+  transform-origin: left;
+}
+.construction-track[data-animated="true"] .hero-note-process {
+  display: none;
+}
 .hero-copy {
   padding-top: 57px;
   width: 660px;
@@ -665,6 +715,13 @@ button:focus-visible {
   }
 }
 @media (max-width: 900px) {
+  .construction-track[data-animated="true"] .construction-stage {
+    min-height: max(580px, 100svh);
+  }
+  .construction-cue {
+    position: static;
+    margin-top: 22px;
+  }
   .primary-navigation {
     gap: 24px;
     padding-right: 0;
@@ -709,6 +766,12 @@ button:focus-visible {
   }
 }
 @media (max-width: 639px) {
+  .construction-track[data-animated="true"] .construction-stage {
+    min-height: max(760px, 100svh);
+  }
+  .construction-track[data-animated="true"] {
+    height: calc(var(--construction-height) + clamp(420px, 70svh, 620px));
+  }
   .site-container {
     width: calc(100% - 42px);
   }
@@ -921,6 +984,9 @@ button:focus-visible {
   }
 }
 @media (max-width: 374px) {
+  .construction-track[data-animated="true"] .construction-stage {
+    min-height: max(735px, 100svh);
+  }
   .hero {
     min-height: 735px;
   }
@@ -936,6 +1002,16 @@ button:focus-visible {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .construction-track[data-animated="true"] {
+    height: auto;
+  }
+  .construction-track[data-animated="true"] .construction-stage {
+    position: relative;
+    top: auto;
+  }
+  .construction-cue {
+    display: none;
+  }
   html {
     scroll-behavior: auto;
   }

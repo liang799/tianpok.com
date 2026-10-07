@@ -1,9 +1,59 @@
+"use client";
+
+import {
+  motion,
+  useMotionValue,
+  useTransform,
+  type MotionValue,
+} from "motion/react";
+import { Children, type ReactNode } from "react";
 import styles from "./construction-scene.module.css";
 
 const ORANGE = "#ff4d23";
 const INK = "#30322f";
 
-type SceneProps = { className?: string };
+type SceneProps = {
+  className?: string;
+  progress?: MotionValue<number>;
+  animated?: boolean;
+};
+
+type AssemblyProps = {
+  progress: MotionValue<number>;
+  animated: boolean;
+};
+
+function AssemblyPart({
+  progress,
+  animated,
+  name,
+  start,
+  end,
+  distance = 54,
+  children,
+}: AssemblyProps & {
+  name: string;
+  start: number;
+  end: number;
+  distance?: number;
+  children: ReactNode;
+}) {
+  const y = useTransform(progress, [start, end], [distance, 0]);
+  const opacity = useTransform(
+    progress,
+    [start, start + (end - start) * 0.6],
+    [0, 1],
+  );
+
+  return (
+    <motion.g
+      data-assembly-part={name}
+      style={{ y: animated ? y : 0, opacity: animated ? opacity : 1 }}
+    >
+      {Children.toArray(children)}
+    </motion.g>
+  );
+}
 
 const skyline = [
   [202, 538, 29, 66],
@@ -104,12 +154,18 @@ function Scaffold({
   );
 }
 
-function Crane() {
+function Crane({ progress, animated }: AssemblyProps) {
   const left = 448;
   const right = 931;
   const top = 70;
   const deck = 165;
   const mast = 765;
+  const loadY = useTransform(progress, [0, 0.78], [-78, 0]);
+  const ropes = useTransform(
+    loadY,
+    (offset) =>
+      `M562 187L570 ${281 + offset}h7L587 186M573 190V${290 + offset}`,
+  );
   return (
     <g stroke={ORANGE} strokeLinejoin="round" strokeLinecap="round">
       <path
@@ -170,64 +226,147 @@ function Crane() {
         fill={ORANGE}
         stroke="none"
       />
-      <g className={styles.load}>
+      <g>
         <path d="M559 177h31v9h-31Z" fill={ORANGE} strokeWidth="1" />
-        <path
-          d="M562 187l8 94h7l10-95M573 190v100"
+        <motion.path
+          d={animated ? ropes : "M562 187l8 94h7l10-95M573 190v100"}
           fill="none"
           strokeWidth="1.6"
         />
-        <rect
-          x="568"
-          y="267"
-          width="11"
-          height="17"
-          fill={ORANGE}
-          stroke="none"
-        />
-        <path
-          d="M574 284v7c8 4 3 12-2 11-6-1-5-6-3-8"
-          fill="none"
-          strokeWidth="2"
-        />
-        <g className={styles.suspended}>
-          <path d="M573 299l-33 38m33-38 35 38" fill="none" strokeWidth="1.7" />
-          <path d="M526 336h95v11h-95Z" fill={INK} stroke="none" />
-        </g>
+        <motion.g
+          data-assembly-part="crane-load"
+          style={{ y: animated ? loadY : 0 }}
+        >
+          <rect
+            x="568"
+            y="267"
+            width="11"
+            height="17"
+            fill={ORANGE}
+            stroke="none"
+          />
+          <path
+            d="M574 284v7c8 4 3 12-2 11-6-1-5-6-3-8"
+            fill="none"
+            strokeWidth="2"
+          />
+          <g>
+            <path
+              d="M573 299l-33 38m33-38 35 38"
+              fill="none"
+              strokeWidth="1.7"
+            />
+            <path d="M526 336h95v11h-95Z" fill={INK} stroke="none" />
+          </g>
+        </motion.g>
       </g>
       <circle cx={mast} cy={top} r="3" fill={ORANGE} stroke="none" />
     </g>
   );
 }
 
-function UnfinishedBuilding() {
+function UnfinishedBuilding({ progress, animated }: AssemblyProps) {
+  const assembly = { progress, animated };
   return (
     <g>
-      <g fill={INK}>
-        <path d="M478 430h8V603h-8ZM491 389h9v214h-9ZM545 405h9v198h-9ZM598 430h8v173h-8ZM660 397h9v206h-9Z" />
-        <path d="M479 463h190v140H479Z" />
-        <path d="M480 426h190v7H480ZM483 468h188v7H483ZM482 506h188v6H482Z" />
-      </g>
-      <g fill="#fff0e5">
-        {[479, 514, 549, 584].map((y) => (
-          <g key={y}>
-            <rect x="505" y={y} width="20" height="21" />
-            <rect x="634" y={y} width="20" height="21" />
+      {[
+        {
+          name: "floor-base",
+          y: 570,
+          height: 33,
+          window: 584,
+          start: 0.1,
+          end: 0.3,
+        },
+        {
+          name: "floor-middle",
+          y: 535,
+          height: 35,
+          window: 549,
+          start: 0.26,
+          end: 0.46,
+        },
+        {
+          name: "floor-upper",
+          y: 500,
+          height: 35,
+          window: 514,
+          start: 0.42,
+          end: 0.62,
+        },
+        {
+          name: "floor-top",
+          y: 463,
+          height: 37,
+          window: 479,
+          start: 0.58,
+          end: 0.78,
+        },
+      ].map((floor) => (
+        <AssemblyPart
+          {...assembly}
+          key={floor.name}
+          name={floor.name}
+          start={floor.start}
+          end={floor.end}
+          distance={-52}
+        >
+          <g key="walls" fill={INK}>
+            <rect x="478" y={floor.y} width="8" height={floor.height} />
+            <rect x="479" y={floor.y} width="190" height={floor.height} />
+            {floor.name === "floor-top" && <path d="M483 468h188v7H483Z" />}
+            {floor.name === "floor-upper" && <path d="M482 506h188v6H482Z" />}
           </g>
-        ))}
-      </g>
-      <g stroke={INK} fill="none" strokeWidth="2">
-        <path d="M477 414h24M495 389v-36M603 464v-70M641 464v-72M596 399h52M596 425h52M603 399l38 26-38 26 38 13" />
+          <AssemblyPart
+            {...assembly}
+            key="windows"
+            name={`${floor.name}-windows`}
+            start={floor.start + 0.08}
+            end={floor.end}
+            distance={8}
+          >
+            <g fill="#fff0e5">
+              <rect x="505" y={floor.window} width="20" height="21" />
+              <rect x="634" y={floor.window} width="20" height="21" />
+            </g>
+          </AssemblyPart>
+        </AssemblyPart>
+      ))}
+      <AssemblyPart
+        {...assembly}
+        name="frame"
+        start={0.72}
+        end={0.92}
+        distance={-62}
+      >
+        <g fill={INK}>
+          <path d="M478 430h8v33h-8ZM491 389h9v74h-9ZM545 405h9v58h-9ZM598 430h8v33h-8ZM660 397h9v66h-9Z" />
+          <path d="M480 426h190v7H480Z" />
+        </g>
+        <g stroke={INK} fill="none" strokeWidth="2">
+          <path d="M477 414h24M495 389v-36M603 464v-70M641 464v-72M596 399h52M596 425h52M603 399l38 26-38 26 38 13" />
+        </g>
+      </AssemblyPart>
+      <AssemblyPart
+        {...assembly}
+        name="ladder"
+        start={0.8}
+        end={0.96}
+        distance={34}
+      >
         <path
           d="M693 604V483h7v121M696 480v-5M691 499h10M691 513h10M691 527h10M691 541h10M691 555h10M691 569h10M691 583h10"
+          stroke={INK}
+          fill="none"
           strokeWidth="1.3"
         />
-      </g>
+      </AssemblyPart>
     </g>
   );
 }
 
-function Excavator() {
+function Excavator({ progress, animated }: AssemblyProps) {
+  const armRotation = useTransform(progress, [0, 0.16, 0.34], [0, -4, 0]);
   return (
     <g transform="translate(0 20)">
       <path
@@ -250,7 +389,10 @@ function Excavator() {
         strokeWidth="1.3"
       />
       <path d="M43 568h73v5H43Z" fill="#de401d" />
-      <g className={styles.excavatorArm}>
+      <motion.g
+        className={styles.excavatorArm}
+        style={{ rotate: animated ? armRotation : 0 }}
+      >
         <path
           d="M93 548l20-61 68-36c7-4 14 0 16 8l22 88-10 4-30-82-53 31-20 50Z"
           fill={ORANGE}
@@ -293,17 +435,27 @@ function Excavator() {
           strokeWidth="1"
         />
         <circle cx="122" cy="491" r="3" fill="#ffa17b" />
-      </g>
+      </motion.g>
     </g>
   );
 }
 
-export default function ConstructionScene({ className = "" }: SceneProps) {
+export default function ConstructionScene({
+  className = "",
+  progress,
+  animated = false,
+}: SceneProps) {
+  const complete = useMotionValue(1);
+  const assembly = {
+    progress: progress ?? complete,
+    animated: animated && !!progress,
+  };
+
   return (
     <svg
       className={`${styles.scene} ${className}`}
       viewBox="0 0 1020 625"
-      preserveAspectRatio="xMidYMax meet"
+      preserveAspectRatio={animated ? "none" : "xMidYMax meet"}
       fill="none"
       aria-hidden="true"
       focusable="false"
@@ -316,43 +468,76 @@ export default function ConstructionScene({ className = "" }: SceneProps) {
         />
       </g>
       <City />
-      <path
-        d="M272 604V494h14v-15h17v9h12v116M318 604V438h11v-13h10v-10h10v10h10v24h7v155M383 604V565h15v-17h12v56"
-        fill={ORANGE}
-      />
-      <path
-        d="M338 414v-28M322 469v-25M358 447v-10M289 480v-28"
-        stroke={ORANGE}
-        strokeWidth="1.1"
-      />
-      <g stroke="#fff3e8" strokeWidth="2" opacity=".75">
-        <path d="M329 458v5m0 15v5m0 15v5m0 15v5m0 15v5M347 458v5m0 15v5m0 15v5m0 15v5m0 15v5" />
-      </g>
-      <Scaffold
-        x={241}
-        y={558}
-        width={43}
-        height={47}
-        color={ORANGE}
-        levels={2}
-      />
-      <Scaffold
-        x={285}
-        y={579}
-        width={42}
-        height={25}
-        color={ORANGE}
-        levels={2}
-      />
-      <Scaffold x={389} y={503} width={58} height={101} levels={5} />
-      <Scaffold x={420} y={550} width={61} height={54} levels={3} />
-      <Crane />
-      <UnfinishedBuilding />
-      <Scaffold x={707} y={516} width={82} height={89} levels={4} />
-      <Scaffold x={784} y={512} width={45} height={92} levels={4} />
-      <Scaffold x={836} y={555} width={39} height={50} levels={2} />
-      <path d="M298 604h32v-8h38v-17h53v25M866 604h64v-9h45v9" fill={INK} />
-      <Excavator />
+      <AssemblyPart
+        {...assembly}
+        name="site"
+        start={0.02}
+        end={0.34}
+        distance={88}
+      >
+        <path
+          d="M272 604V494h14v-15h17v9h12v116M318 604V438h11v-13h10v-10h10v10h10v24h7v155M383 604V565h15v-17h12v56"
+          fill={ORANGE}
+        />
+        <path
+          d="M338 414v-28M322 469v-25M358 447v-10M289 480v-28"
+          stroke={ORANGE}
+          strokeWidth="1.1"
+        />
+        <g stroke="#fff3e8" strokeWidth="2" opacity=".75">
+          <path d="M329 458v5m0 15v5m0 15v5m0 15v5m0 15v5M347 458v5m0 15v5m0 15v5m0 15v5m0 15v5" />
+        </g>
+        <Scaffold
+          x={241}
+          y={558}
+          width={43}
+          height={47}
+          color={ORANGE}
+          levels={2}
+        />
+        <Scaffold
+          x={285}
+          y={579}
+          width={42}
+          height={25}
+          color={ORANGE}
+          levels={2}
+        />
+      </AssemblyPart>
+      <AssemblyPart
+        {...assembly}
+        name="scaffold-left"
+        start={0.35}
+        end={0.68}
+        distance={78}
+      >
+        <Scaffold x={389} y={503} width={58} height={101} levels={5} />
+        <Scaffold x={420} y={550} width={61} height={54} levels={3} />
+      </AssemblyPart>
+      <Crane {...assembly} />
+      <AssemblyPart
+        {...assembly}
+        name="foundation"
+        start={0}
+        end={0.18}
+        distance={22}
+      >
+        <path d="M298 604h32v-8h38v-17h53v25M866 604h64v-9h45v9" fill={INK} />
+        <rect x="479" y="596" width="190" height="8" fill={INK} />
+      </AssemblyPart>
+      <UnfinishedBuilding {...assembly} />
+      <AssemblyPart
+        {...assembly}
+        name="scaffold"
+        start={0.8}
+        end={0.98}
+        distance={66}
+      >
+        <Scaffold x={707} y={516} width={82} height={89} levels={4} />
+        <Scaffold x={784} y={512} width={45} height={92} levels={4} />
+        <Scaffold x={836} y={555} width={39} height={50} levels={2} />
+      </AssemblyPart>
+      <Excavator {...assembly} />
       <path
         d="M0 612l23-8 29 1 21 7 28-3 25 6 33-11 20 8 24-11 29 6 30 7h759v11H0Z"
         fill="#ead6c9"

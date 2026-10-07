@@ -55,7 +55,11 @@ Email actions use `hello@tianpok.com`. The GitHub footer link uses the repositor
 
 ## Design and behavior
 
-The page includes a mobile navigation menu, section-aware navigation, subtle crane and excavator motion, entrance animations, hover transitions, keyboard focus styling, project category filters, and a custom 404 page. Reduced-motion preferences suppress decorative animation and smooth scrolling. Content remains visible without JavaScript.
+The page includes a mobile navigation menu, section-aware navigation, entrance animations, hover transitions, keyboard focus styling, project category filters, and a custom 404 page.
+
+The home illustration assembles as you scroll: foundations, floors, windows, steelwork, and scaffolding arrive in sequence while the crane lowers its load. Motion's `useScroll` and `useTransform` drive the SVG directly; native scrolling reverses the assembly on the way back up. The hero stays in view during the short build sequence, then releases into the portfolio. Section links skip ahead normally. Short mobile screens keep the building visible using a negative sticky offset.
+
+`src/components/construction-hero.tsx` controls scroll geometry and phase labels; `construction-scene.tsx` defines each piece's progress range. Storybook includes a keyboard-accessible progress slider for inspecting the assembly and a static fallback story. Browser tests cover real scrolling, pinning, reversal, section links, navigation back, mobile layouts, and fallbacks. Reduced-motion users and browsers without JavaScript receive the fully assembled illustration without the extra scroll distance. All page copy remains server-rendered.
 
 Google fonts are self-hosted by `next/font` at build time; an internet connection is needed for the first font download. Project images are local and served through Next.js image optimization.
 

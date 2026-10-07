@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, within } from "storybook/test";
+import { expect, waitFor, within } from "storybook/test";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import Home from "./page";
@@ -25,17 +25,19 @@ const meta = {
     await expect(
       canvas.getByRole("link", { name: "About Me" }),
     ).toHaveAttribute("href", "#about");
-    await expect(
-      canvas.getByRole("heading", { name: "Portfolio" }),
-    ).toBeVisible();
+    await waitFor(() =>
+      expect(canvas.getByRole("heading", { name: "Portfolio" })).toBeVisible(),
+    );
     await expect(
       within(canvas.getByRole("region", { name: "Portfolio" })).getAllByRole(
         "link",
       ),
     ).toHaveLength(7);
-    await expect(
-      canvas.getByRole("heading", { name: /Still\s*Building/ }),
-    ).toBeVisible();
+    await waitFor(() =>
+      expect(
+        canvas.getByRole("heading", { name: /Still\s*Building/ }),
+      ).toBeVisible(),
+    );
   },
 } satisfies Meta<typeof Home>;
 
