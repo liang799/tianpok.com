@@ -5,7 +5,9 @@ export function Brand({ footer = false }: { footer?: boolean }) {
     <Link
       href="/"
       className={`brand inline-flex items-center ${footer ? "brand-footer" : ""}`}
-      aria-label="Tian Pok — home"
+      aria-label={
+        footer ? "Tian Pok — home. Ideas under construction" : "Tian Pok — home"
+      }
     >
       <Image
         className="brand-mark"

@@ -43,12 +43,15 @@ test("home presents the construction headline and six linked projects", async ({
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     /Ideas\s*Under\s*Construction/,
   );
-  await expect(page.getByRole("link", { name: /^Explore / })).toHaveCount(6);
+  await expect(
+    page
+      .getByRole("link")
+      .filter({ has: page.getByRole("heading", { level: 3 }) }),
+  ).toHaveCount(6);
 
   for (const project of projectRoutes) {
     const card = page.getByRole("link", {
-      name: `Explore ${project.title}`,
-      exact: true,
+      name: new RegExp(project.title),
     });
     await expect(card).toHaveAttribute("href", `/projects/${project.slug}`);
     const image = card.getByRole("img");
@@ -151,9 +154,11 @@ test("project filters update both the visible cards and selection state", async 
     await button.click();
     await expect(button).toHaveAttribute("aria-pressed", "true");
     await expect(filters.locator('[aria-pressed="true"]')).toHaveCount(1);
-    await expect(page.getByRole("link", { name: /^Explore / })).toHaveCount(
-      count,
-    );
+    await expect(
+      page
+        .getByRole("link")
+        .filter({ has: page.getByRole("heading", { level: 3 }) }),
+    ).toHaveCount(count);
     await expect(page.getByRole("status")).toContainText(`Showing ${count}`);
   }
 });

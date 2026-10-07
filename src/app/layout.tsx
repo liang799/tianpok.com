@@ -1,19 +1,8 @@
 import type { Metadata } from "next";
-import { Anton, Inter } from "next/font/google";
+import { anton, inter } from "./fonts";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import "./globals.css";
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
-const anton = Anton({
-  variable: "--font-anton",
-  weight: "400",
-  subsets: ["latin"],
-  display: "swap",
-});
 export const metadata: Metadata = {
   metadataBase: new URL("https://tianpok.com"),
   title: {

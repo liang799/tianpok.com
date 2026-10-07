@@ -7,7 +7,6 @@ export function ProjectCard({ project }: { project: Project }) {
     <Link
       href={`/projects/${project.slug}`}
       className="project-card group block h-full"
-      aria-label={`Explore ${project.title}`}
     >
       <div className="project-image relative overflow-hidden">
         <Image

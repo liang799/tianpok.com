@@ -4,7 +4,7 @@ A responsive portfolio built with Next.js App Router, TypeScript, and Tailwind C
 
 ## Run locally
 
-Use Node.js 22 or newer.
+Use Node.js 22.12 or newer within the supported Node 22, 24, or 26+ release lines.
 
 ```sh
 npm install
@@ -22,6 +22,21 @@ npm run test:e2e    # Chromium browser checks
 ```
 
 For a fresh machine, install the test browser once with `npx playwright install chromium`. The test configuration starts a local server automatically if one is not running.
+
+## Storybook and component tests
+
+```sh
+npm run storybook              # Open Storybook at http://localhost:6006
+npm run test:storybook         # Run component + accessibility tests in Chromium
+npm run test:storybook:watch   # Re-run component tests as you edit
+npm run build-storybook        # Generate the static site in storybook-static/
+```
+
+Stories are colocated with components in `src/**/*.stories.tsx`. They cover the header, footer, exact vector wordmark, project cards, category filters, and the complete home page at desktop and mobile sizes. Play functions test keyboard filtering, menu dismissal and focus restoration, route selection, link destinations, real image loading, and empty collections. Accessibility violations fail the suite through `@storybook/addon-a11y`.
+
+Vitest runs these tests through Storybook's Next.js Vite integration in a real Chromium browser. It does not need the Next.js development server. The existing Playwright suite remains responsible for actual page navigation and the production application's responsive behavior.
+
+Storybook shares the site's Tailwind styles and font definitions. `.storybook/redirect-boundary.tsx` is a Storybook-only compatibility adapter for Next.js 16.4's new layout cache context; it preserves the real redirect boundary and leaves production bundling unchanged. Remove the adapter when Storybook's router provider supports `parentRenderTree`.
 
 ## Content and structure
 
