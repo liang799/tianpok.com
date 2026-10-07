@@ -163,7 +163,7 @@ export function ConstructionHero({ children }: { children: ReactNode }) {
     setPhase(
       value < 0.015
         ? "Scroll to build"
-        : value >= 0.98
+        : value >= 1
           ? "Built. Keep exploring."
           : sampleCrane(value).phaseLabel,
     );

@@ -1,5 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import sharp from "sharp";
+import { CONSTRUCTION_PIECES } from "../src/lib/construction-plan";
+
+const pieceCount = CONSTRUCTION_PIECES.length;
+const liftProgress = (index: number, cycle: number) =>
+  (index + cycle) / pieceCount;
 
 function scene(page: Page) {
   return page.getByTestId("desktop-construction-scene");
@@ -11,6 +16,10 @@ async function expectWebGLScene(page: Page) {
   });
   await expect(scene(page).locator("canvas")).toBeVisible();
   await expect(scene(page).locator("img, image")).toHaveCount(0);
+  await expect(scene(page)).toHaveAttribute(
+    "data-piece-count",
+    String(pieceCount),
+  );
 }
 
 async function renderedProgress(page: Page) {
@@ -35,20 +44,46 @@ async function scrollThroughConstruction(page: Page, progress: number) {
     "Animation needs a real, scrollable construction track",
   ).toBeGreaterThan(100);
   // Native wheel input exercises sticky layout and the scene's scroll mapping.
+  // Layout can end on a fractional pixel while wheel input rounds to pixels.
+  // Cross the endpoint by one pixel so a completed seek actually reaches 1.
+  const endpoint = progress === 1 ? 1 : 0;
   await page.mouse.move(20, 200);
-  await page.mouse.wheel(0, trackBounds!.y - stickyTop + distance * progress);
+  await page.mouse.wheel(
+    0,
+    trackBounds!.y - stickyTop + distance * progress + endpoint,
+  );
 }
 
 async function expectProgress(page: Page, progress: number) {
   await expect
     .poll(async () => Math.abs((await renderedProgress(page)) - progress))
-    .toBeLessThan(0.015);
+    .toBeLessThan(0.001);
+}
+
+async function expectLift(page: Page, index: number, cycle: number) {
+  await expectProgress(page, liftProgress(index, cycle));
+  await expect(scene(page)).toHaveAttribute(
+    "data-active-piece",
+    CONSTRUCTION_PIECES[index].id,
+  );
+  await expect(scene(page)).toHaveAttribute("data-lift-index", String(index));
+  await expect
+    .poll(async () =>
+      Math.abs(
+        Number(await scene(page).getAttribute("data-cycle-progress")) - cycle,
+      ),
+    )
+    .toBeLessThan(0.01);
 }
 
 async function expectCompletedBuilding(page: Page) {
   await expect(scene(page)).toHaveAttribute("data-phase", "completed");
   await expect(scene(page)).toHaveAttribute("data-placed", "true");
   await expect(scene(page)).toHaveAttribute("data-attached", "false");
+  await expect(scene(page)).toHaveAttribute(
+    "data-placed-count",
+    String(pieceCount),
+  );
   await expectProgress(page, 1);
 }
 
@@ -125,7 +160,7 @@ test("a wheel step renders intermediate crane frames instead of snapping", async
   await expectProgress(page, 0.6);
 });
 
-test("the crane picks up, carries, seats, and releases its load; scrolling back reverses it", async ({
+test("the crane picks up, carries, seats, and releases the first piece before completing the structure", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -134,35 +169,41 @@ test("the crane picks up, carries, seats, and releases its load; scrolling back 
   await settleHeroLayout(page);
   await expect(scene(page)).toHaveAttribute("data-attached", "false");
   await expect(scene(page)).toHaveAttribute("data-placed", "false");
+  await expect(scene(page)).toHaveAttribute("data-placed-count", "0");
+  await expect(scene(page)).toHaveAttribute(
+    "data-active-piece",
+    CONSTRUCTION_PIECES[0].id,
+  );
   const initial = await scene(page).locator("canvas").screenshot();
 
-  await scrollThroughConstruction(page, 0.16);
-  await expectProgress(page, 0.16);
+  await scrollThroughConstruction(page, liftProgress(0, 0.16));
+  await expectLift(page, 0, 0.16);
   await expect(scene(page)).toHaveAttribute("data-phase", "lower");
   await expect(scene(page)).toHaveAttribute("data-attached", "false");
 
-  await scrollThroughConstruction(page, 0.42);
-  await expectProgress(page, 0.42);
+  await scrollThroughConstruction(page, liftProgress(0, 0.42));
+  await expectLift(page, 0, 0.42);
   await expect(scene(page)).toHaveAttribute("data-phase", "lift");
   await expect(scene(page)).toHaveAttribute("data-attached", "true");
   await expect(scene(page)).toHaveAttribute("data-placed", "false");
   await expectPinnedStage(page);
 
-  await scrollThroughConstruction(page, 0.59);
-  await expectProgress(page, 0.59);
+  await scrollThroughConstruction(page, liftProgress(0, 0.59));
+  await expectLift(page, 0, 0.59);
   await expect(scene(page)).toHaveAttribute("data-phase", "slew");
   await expect(scene(page)).toHaveAttribute("data-attached", "true");
 
-  await scrollThroughConstruction(page, 0.74);
-  await expectProgress(page, 0.74);
+  await scrollThroughConstruction(page, liftProgress(0, 0.74));
+  await expectLift(page, 0, 0.74);
   await expect(scene(page)).toHaveAttribute("data-phase", "seat");
   await expect(scene(page)).toHaveAttribute("data-attached", "true");
 
-  await scrollThroughConstruction(page, 0.87);
-  await expectProgress(page, 0.87);
+  await scrollThroughConstruction(page, liftProgress(0, 0.87));
+  await expectLift(page, 0, 0.87);
   await expect(scene(page)).toHaveAttribute("data-phase", "release");
   await expect(scene(page)).toHaveAttribute("data-attached", "false");
   await expect(scene(page)).toHaveAttribute("data-placed", "true");
+  await expect(scene(page)).toHaveAttribute("data-placed-count", "1");
 
   await scrollThroughConstruction(page, 1);
   await expectCompletedBuilding(page);
@@ -197,6 +238,79 @@ test("the crane picks up, carries, seats, and releases its load; scrolling back 
   await expect(scene(page)).toHaveAttribute("data-phase", "approach");
   await expect(scene(page)).toHaveAttribute("data-attached", "false");
   await expect(scene(page)).toHaveAttribute("data-placed", "false");
+  await expect(scene(page)).toHaveAttribute("data-placed-count", "0");
+});
+
+test("all eight staged pieces are placed in order and reversing a cycle returns its piece to staging", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(45_000);
+  expect(pieceCount).toBe(8);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/");
+  await expectWebGLScene(page);
+  await settleHeroLayout(page);
+  await expect(scene(page)).toHaveAttribute("data-placed-count", "0");
+  const stage = page.getByTestId("construction-stage");
+  await stage.screenshot({
+    path: testInfo.outputPath("milestone2-staged.png"),
+    animations: "disabled",
+  });
+
+  for (const [index] of CONSTRUCTION_PIECES.entries()) {
+    await scrollThroughConstruction(page, liftProgress(index, 0.59));
+    await expectLift(page, index, 0.59);
+    await expect(scene(page)).toHaveAttribute("data-phase", "slew");
+    await expect(scene(page)).toHaveAttribute("data-attached", "true");
+    await expect(scene(page)).toHaveAttribute("data-placed", "false");
+    await expect(scene(page)).toHaveAttribute(
+      "data-placed-count",
+      String(index),
+    );
+    if (index === 3) {
+      await stage.screenshot({
+        path: testInfo.outputPath("milestone2-building.png"),
+        animations: "disabled",
+      });
+    }
+
+    await scrollThroughConstruction(page, liftProgress(index, 0.94));
+    await expectLift(page, index, 0.94);
+    await expect(scene(page)).toHaveAttribute("data-phase", "return");
+    await expect(scene(page)).toHaveAttribute("data-attached", "false");
+    await expect(scene(page)).toHaveAttribute("data-placed", "true");
+    await expect(scene(page)).toHaveAttribute(
+      "data-placed-count",
+      String(index + 1),
+    );
+  }
+
+  await scrollThroughConstruction(page, 1);
+  await expectCompletedBuilding(page);
+  await expect(
+    page.getByText("Built. Keep exploring.", { exact: true }),
+  ).toBeVisible();
+  // Capture the viewport without scrolling the sticky stage back into view.
+  // A locator capture at its fractional end boundary can reverse one pixel.
+  await page.screenshot({
+    path: testInfo.outputPath("milestone2-complete.png"),
+    animations: "disabled",
+  });
+  // Cross back from the fifth lift to the fourth, then all the way to its
+  // pickup. The completed lower pieces must remain assembled throughout.
+  await scrollThroughConstruction(page, liftProgress(4, 0.16));
+  await expectLift(page, 4, 0.16);
+  await expect(scene(page)).toHaveAttribute("data-placed-count", "4");
+  await scrollThroughConstruction(page, liftProgress(3, 0.74));
+  await expectLift(page, 3, 0.74);
+  await expect(scene(page)).toHaveAttribute("data-phase", "seat");
+  await expect(scene(page)).toHaveAttribute("data-attached", "true");
+  await expect(scene(page)).toHaveAttribute("data-placed-count", "3");
+  await scrollThroughConstruction(page, liftProgress(3, 0.16));
+  await expectLift(page, 3, 0.16);
+  await expect(scene(page)).toHaveAttribute("data-attached", "false");
+  await expect(scene(page)).toHaveAttribute("data-placed", "false");
+  await expect(scene(page)).toHaveAttribute("data-placed-count", "3");
 });
 
 test("the completed scene releases into the portfolio and the CTA can skip it", async ({

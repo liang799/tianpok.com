@@ -11,6 +11,8 @@ import {
 import { useMotionValue, useReducedMotion, useSpring } from "motion/react";
 import { projects } from "@/data/projects";
 import { constructionSpring } from "@/lib/construction-motion";
+import { CONSTRUCTION_PIECES } from "@/lib/construction-plan";
+import { sampleCrane } from "@/lib/crane-choreography";
 import { ArrowRight, ArrowUpRight } from "./icons";
 import { ProjectCard } from "./project-card";
 import DesktopConstructionScene from "./desktop-construction-scene";
@@ -44,7 +46,7 @@ const layers = [
     file: "src/lib/crane-choreography.ts",
     heading: "Movement with a fallback.",
     description:
-      "Native scroll drives a shared spring and a real 3D crane. One deterministic model keeps its trolley, hoist, and load connected in either direction. A static vector scene keeps the architecture visible without WebGL.",
+      "Native scroll drives a shared spring and a real 3D crane. Eight lifts build the structure from separate pieces. One deterministic model keeps every piece and the lifting rig connected in either direction. A static vector scene keeps the architecture visible without WebGL.",
     code: `// One progress value, a complete 3D pose\nconst frame = sampleCrane(progress);\n\ncrane.rotation.y = frame.boomRotation;\nload.position.set(...frame.loadPosition);\n\n// Seek backward to reverse the same lift.\nsampleCrane(0.5);`,
   },
 ] as const;
@@ -68,6 +70,7 @@ function MotionWorkbench() {
   const smooth = useSpring(input, constructionSpring);
   const reducedMotion = useReducedMotion();
   const id = useId();
+  const frame = sampleCrane(percent / 100);
   const seek = (value: number) => {
     setPercent(value);
     input.set(value / 100);
@@ -85,8 +88,33 @@ function MotionWorkbench() {
           animated
         />
         <div className={styles.motionControls}>
+          <label className={styles.liftControl} htmlFor={`${id}-lift`}>
+            Inspect a lift
+            <select
+              id={`${id}-lift`}
+              value={frame.activePieceIndex}
+              onChange={(event) =>
+                seek(
+                  Number(
+                    (
+                      ((Number(event.target.value) + 0.5) /
+                        CONSTRUCTION_PIECES.length) *
+                      100
+                    ).toFixed(1),
+                  ),
+                )
+              }
+            >
+              {CONSTRUCTION_PIECES.map((piece, index) => (
+                <option key={piece.id} value={index}>
+                  {index + 1}. {piece.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <label htmlFor={id}>
-            Assembly progress <output htmlFor={id}>{percent}%</output>
+            Assembly progress{" "}
+            <output htmlFor={id}>{Number(percent.toFixed(1))}%</output>
           </label>
           <input
             id={id}
@@ -94,10 +122,16 @@ function MotionWorkbench() {
             aria-label="Assembly progress"
             min="0"
             max="100"
-            step="1"
+            step="0.1"
             value={percent}
             onChange={(event) => seek(Number(event.target.value))}
           />
+          <p className={styles.liftStatus}>
+            <span>{frame.phaseLabel}</span>
+            <span>
+              {frame.placedCount} / {CONSTRUCTION_PIECES.length} placed
+            </span>
+          </p>
           <div className={styles.seekButtons}>
             {[
               ["Start", 0],
@@ -124,16 +158,17 @@ function MotionWorkbench() {
         <p className={styles.panelEyebrow}>03 / THE MOVEMENT</p>
         <h3>The same mechanism. In your hands.</h3>
         <p>
-          Scrub a complete crane lift forward and backward. This is the hero’s
-          actual 3D scene: lower the hook, lift the load, place the final piece,
-          and release. Every position comes from the same progress value.
+          Build the TP structure through eight separate crane lifts. Choose a
+          piece or scrub forward and backward to follow its journey from pallet
+          to building. This is the hero’s actual 3D scene, with every position
+          calculated from the same progress value.
         </p>
         <div className={styles.codeHeader}>
-          <span>Deterministic lift · current input</span>
+          <span>Eight connected lifts · current input</span>
           <span>TS</span>
         </div>
         <pre className={styles.code}>
-          <code>{`// The hero and workbench share this input\ninput.set(${(percent / 100).toFixed(2)});\n\n// Sample any point in the lift, in either direction\nconst frame = sampleCrane(${(percent / 100).toFixed(2)});\n\n// Crane, cable, and load stay connected\nframe.hookPosition;\nframe.loadPosition;\nframe.attached;`}</code>
+          <code>{`// The hero and workbench share this input\ninput.set(${(percent / 100).toFixed(3)});\n\n// Every piece has a position throughout the build\nconst frame = sampleCrane(${(percent / 100).toFixed(3)});\n\nframe.activePieceIndex; // ${frame.activePieceIndex}\nframe.placedCount; // ${frame.placedCount}\nframe.piecePoses; // staged, carried, and placed`}</code>
         </pre>
         <SourceLink path="src/lib/crane-choreography.ts" />
       </div>

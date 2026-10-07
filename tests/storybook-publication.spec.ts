@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { CONSTRUCTION_PIECES } from "../src/lib/construction-plan";
 
 const constructionStory =
   "illustrations-desktop-construction-scene--scroll-assembly";
@@ -71,9 +72,14 @@ test("published Storybook loads and scrubs the real 3D component without raster 
     .toBe("completed");
   await expect(scene).toHaveAttribute("data-placed", "true");
   await expect(scene).toHaveAttribute("data-attached", "false");
+  await expect(scene).toHaveAttribute(
+    "data-placed-count",
+    String(CONSTRUCTION_PIECES.length),
+  );
   await slider.press("Home");
   await expect(scene).toHaveAttribute("data-phase", "approach");
   await expect(scene).toHaveAttribute("data-placed", "false");
+  await expect(scene).toHaveAttribute("data-placed-count", "0");
   expect(rasterRequests).toEqual([]);
   expect(failedAssets).toEqual([]);
   expect(errors).toEqual([]);

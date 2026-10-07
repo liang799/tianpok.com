@@ -10,10 +10,11 @@ import {
   sampleCrane,
   type CraneSample,
 } from "@/lib/crane-choreography";
+import { CONSTRUCTION_PIECES, liftingEyes } from "@/lib/construction-plan";
 import {
   BuildingSite,
   CityBackdrop,
-  ConstructionLoad,
+  ConstructionPieceModel,
   CraneBoom,
   CraneHook,
   CraneTower,
@@ -27,7 +28,11 @@ type CanvasProps = {
   dark: boolean;
   onReady: () => void;
   onFailure: () => void;
-  onFrame: (value: number, sample: CraneSample) => void;
+  onFrame: (
+    value: number,
+    sample: CraneSample,
+    rendered: { pieceCount: number; placedCount: number },
+  ) => void;
 };
 
 function CameraFrame() {
@@ -56,12 +61,7 @@ function fitCamera(
   camera.updateProjectionMatrix();
 }
 
-const eyeLocations = [
-  [-1.1, 0.43, -0.36],
-  [1.1, 0.43, -0.36],
-  [-1.1, 0.43, 0.36],
-  [1.1, 0.43, 0.36],
-] as const;
+const pieceEyes = CONSTRUCTION_PIECES.map(liftingEyes);
 const up = new Vector3(0, 1, 0);
 
 function CraneSequence({
@@ -76,7 +76,7 @@ function CraneSequence({
   const trolley = useRef<Group>(null);
   const cable = useRef<Group>(null);
   const hook = useRef<Group>(null);
-  const load = useRef<Group>(null);
+  const pieces = useRef<Array<Group | null>>([]);
   const slings = useRef<Array<Mesh | null>>([]);
   const slingGroup = useRef<Group>(null);
   const firstFrame = useRef(true);
@@ -127,23 +127,35 @@ function CraneSequence({
       hook.current.position.fromArray(sample.hookPosition);
       hook.current.rotation.y = sample.boomRotation;
     }
-    if (load.current) {
-      load.current.position.fromArray(sample.loadPosition);
-      load.current.rotation.set(...sample.loadRotation);
-      load.current.updateMatrixWorld();
-    }
+    let pieceCount = 0;
+    let placedCount = 0;
+    sample.piecePoses.forEach((pose, index) => {
+      const piece = pieces.current[index];
+      if (!piece || piece.children.length === 0) return;
+      piece.position.fromArray(pose.position);
+      piece.rotation.set(...pose.rotation);
+      piece.updateMatrixWorld();
+      pieceCount++;
+      if (pose.placed) placedCount++;
+      const eyes = piece.getObjectByName("lifting-eyes");
+      if (eyes)
+        eyes.visible =
+          !pose.placed ||
+          (index === sample.activePieceIndex && sample.attached);
+    });
+    const activeLoad = pieces.current[sample.activePieceIndex];
     if (slingGroup.current) slingGroup.current.visible = sample.attached;
     start.current.set(
       sample.hookPosition[0],
       sample.hookPosition[1] - 0.56,
       sample.hookPosition[2],
     );
-    eyeLocations.forEach((eye, index) => {
+    pieceEyes[sample.activePieceIndex].forEach((eye, index) => {
       const mesh = slings.current[index];
-      if (!mesh || !load.current) return;
+      if (!mesh || !activeLoad) return;
       endpoint.current
         .set(eye[0], eye[1], eye[2])
-        .applyMatrix4(load.current.matrixWorld);
+        .applyMatrix4(activeLoad.matrixWorld);
       direction.current.subVectors(endpoint.current, start.current);
       const length = direction.current.length();
       mesh.position
@@ -154,7 +166,7 @@ function CraneSequence({
       rotation.current.setFromUnitVectors(up, direction.current.normalize());
       mesh.quaternion.copy(rotation.current);
     });
-    onFrame(value, sample);
+    onFrame(value, sample, { pieceCount, placedCount });
     if (firstFrame.current) {
       firstFrame.current = false;
       readyFrame.current = requestAnimationFrame(onReady);
@@ -187,11 +199,19 @@ function CraneSequence({
       <group ref={hook}>
         <CraneHook />
       </group>
-      <group ref={load}>
-        <ConstructionLoad />
-      </group>
+      {CONSTRUCTION_PIECES.map((piece, index) => (
+        <group
+          key={piece.id}
+          name={piece.id}
+          ref={(node) => {
+            pieces.current[index] = node;
+          }}
+        >
+          <ConstructionPieceModel piece={piece} />
+        </group>
+      ))}
       <group ref={slingGroup}>
-        {eyeLocations.map((_, index) => (
+        {pieceEyes[0].map((_, index) => (
           <mesh
             key={index}
             ref={(node) => {

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fireEvent, waitFor, within } from "storybook/test";
 import { InsideBuild } from "./inside-build";
+import { CONSTRUCTION_PIECES } from "@/lib/construction-plan";
 
 const meta = {
   title: "Site/Inside the Build",
@@ -154,11 +155,31 @@ export const ManualMotion: Story = {
     await userEvent.click(panel.getByRole("button", { name: "Halfway" }));
     await expect(slider).toHaveValue("50");
     await expect(panel.getByText("50%", { exact: true })).toBeVisible();
-    await expect(panel.getByText(/input.set\(0.50\)/)).toBeVisible();
+    await expect(panel.getByText(/input\.set\(0\.50+\)/)).toBeVisible();
     await waitFor(async () => {
+      await expect(scene).toHaveAttribute("data-phase", "approach");
+      await expect(scene).toHaveAttribute("data-attached", "false");
+      await expect(scene).toHaveAttribute("data-placed", "false");
+      await expect(scene).toHaveAttribute(
+        "data-active-piece",
+        CONSTRUCTION_PIECES[4].id,
+      );
+      await expect(scene).toHaveAttribute("data-placed-count", "4");
+    });
+
+    await userEvent.selectOptions(
+      panel.getByRole("combobox", { name: "Inspect a lift" }),
+      "7",
+    );
+    await expect(slider).toHaveValue("93.8");
+    await waitFor(async () => {
+      await expect(scene).toHaveAttribute(
+        "data-active-piece",
+        CONSTRUCTION_PIECES[7].id,
+      );
       await expect(scene).toHaveAttribute("data-phase", "slew");
       await expect(scene).toHaveAttribute("data-attached", "true");
-      await expect(scene).toHaveAttribute("data-placed", "false");
+      await expect(scene).toHaveAttribute("data-placed-count", "7");
     });
 
     await userEvent.click(panel.getByRole("button", { name: "Complete" }));
@@ -167,6 +188,10 @@ export const ManualMotion: Story = {
       await expect(scene).toHaveAttribute("data-phase", "completed");
       await expect(scene).toHaveAttribute("data-placed", "true");
       await expect(scene).toHaveAttribute("data-attached", "false");
+      await expect(scene).toHaveAttribute(
+        "data-placed-count",
+        String(CONSTRUCTION_PIECES.length),
+      );
     });
 
     await userEvent.click(panel.getByRole("button", { name: "Start" }));
@@ -174,6 +199,7 @@ export const ManualMotion: Story = {
     await waitFor(async () => {
       await expect(scene).toHaveAttribute("data-phase", "approach");
       await expect(scene).toHaveAttribute("data-placed", "false");
+      await expect(scene).toHaveAttribute("data-placed-count", "0");
     });
     // Native range keyboard behavior is covered in Playwright; Storybook's
     // userEvent does not implement Home/End for input[type=range].
@@ -183,6 +209,11 @@ export const ManualMotion: Story = {
     await waitFor(async () => {
       await expect(scene).toHaveAttribute("data-phase", "lift");
       await expect(scene).toHaveAttribute("data-attached", "true");
+      await expect(scene).toHaveAttribute(
+        "data-active-piece",
+        CONSTRUCTION_PIECES[3].id,
+      );
+      await expect(scene).toHaveAttribute("data-placed-count", "3");
     });
     await expect(
       canvasElement.ownerDocument.documentElement,

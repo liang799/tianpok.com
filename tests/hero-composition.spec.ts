@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import sharp from "sharp";
+import { CONSTRUCTION_PIECES } from "../src/lib/construction-plan";
 
 for (const reducedMotion of ["no-preference", "reduce"] as const) {
   test(`desktop renders a transparent, nonblank 3D scene with ${reducedMotion} motion`, async ({
@@ -41,6 +42,8 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
     ).toBe(true);
 
     if (reducedMotion === "no-preference") {
+      const index = CONSTRUCTION_PIECES.length - 1;
+      const progress = (index + 0.59) / CONSTRUCTION_PIECES.length;
       const track = await page.getByTestId("construction-track").boundingBox();
       const stage = page.getByTestId("construction-stage");
       const stageBounds = await stage.boundingBox();
@@ -50,15 +53,22 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
       await page.mouse.move(20, 200);
       await page.mouse.wheel(
         0,
-        track!.y - stickyTop + (track!.height - stageBounds!.height) * 0.59,
+        track!.y - stickyTop + (track!.height - stageBounds!.height) * progress,
       );
       await expect
         .poll(async () =>
-          Math.abs(Number(await scene.getAttribute("data-progress")) - 0.59),
+          Math.abs(
+            Number(await scene.getAttribute("data-progress")) - progress,
+          ),
         )
         .toBeLessThan(0.001);
       await expect(scene).toHaveAttribute("data-phase", "slew");
       await expect(scene).toHaveAttribute("data-attached", "true");
+      await expect(scene).toHaveAttribute(
+        "data-active-piece",
+        CONSTRUCTION_PIECES[index].id,
+      );
+      await expect(scene).toHaveAttribute("data-placed-count", String(index));
     }
 
     const screenshot = await canvas.screenshot({

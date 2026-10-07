@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { CONSTRUCTION_PIECES } from "../src/lib/construction-plan";
 
 test("the workbench supports keyboard tabs, wrapping, and Home/End", async ({
   page,
@@ -108,7 +109,7 @@ test("project data drives the real card, source example, and destination", async
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("TREE");
 });
 
-test("motion presets and keyboard scrubbing control the real 3D crane lift", async ({
+test("motion presets, lift selection, and keyboard scrubbing control the full TP assembly", async ({
   page,
 }) => {
   await page.goto("/");
@@ -127,31 +128,70 @@ test("motion presets and keyboard scrubbing control the real 3D crane lift", asy
   await expect(scene).toHaveAttribute("data-phase", "approach");
   await expect(scene).toHaveAttribute("data-attached", "false");
   await expect(scene).toHaveAttribute("data-placed", "false");
+  await expect(scene).toHaveAttribute("data-placed-count", "0");
+  await expect(scene).toHaveAttribute(
+    "data-piece-count",
+    String(CONSTRUCTION_PIECES.length),
+  );
   await panel.getByRole("button", { name: "Halfway" }).click();
   await expect(slider).toHaveValue("50");
   await expect(panel.getByText("50%", { exact: true })).toBeVisible();
-  await expect(panel.locator("code")).toContainText("input.set(0.50)");
-  await expect(scene).toHaveAttribute("data-phase", "slew");
-  await expect(scene).toHaveAttribute("data-attached", "true");
+  await expect(panel.locator("code")).toContainText(/input\.set\(0\.50+\)/);
+  await expect(scene).toHaveAttribute(
+    "data-active-piece",
+    CONSTRUCTION_PIECES[4].id,
+  );
+  await expect(scene).toHaveAttribute("data-phase", "approach");
+  await expect(scene).toHaveAttribute("data-attached", "false");
   await expect(scene).toHaveAttribute("data-placed", "false");
+  await expect(scene).toHaveAttribute("data-placed-count", "4");
   await expect
     .poll(async () => Number(await scene.getAttribute("data-progress")))
     .toBeCloseTo(0.5, 2);
+
+  const lift = panel.getByRole("combobox", { name: "Inspect a lift" });
+  await expect(lift.locator("option")).toHaveCount(CONSTRUCTION_PIECES.length);
+  await lift.selectOption("7");
+  await expect(slider).toHaveValue("93.8");
+  await expect(scene).toHaveAttribute(
+    "data-active-piece",
+    CONSTRUCTION_PIECES[7].id,
+  );
+  await expect(scene).toHaveAttribute("data-phase", "slew");
+  await expect(scene).toHaveAttribute("data-attached", "true");
+  await expect(scene).toHaveAttribute("data-placed-count", "7");
+  await lift.selectOption("2");
+  await expect(slider).toHaveValue("31.3");
+  await expect(scene).toHaveAttribute(
+    "data-active-piece",
+    CONSTRUCTION_PIECES[2].id,
+  );
+  await expect(scene).toHaveAttribute("data-phase", "slew");
+  await expect(scene).toHaveAttribute("data-placed-count", "2");
 
   await panel.getByRole("button", { name: "Complete", exact: true }).click();
   await expect(slider).toHaveValue("100");
   await expect(scene).toHaveAttribute("data-phase", "completed");
   await expect(scene).toHaveAttribute("data-placed", "true");
   await expect(scene).toHaveAttribute("data-attached", "false");
+  await expect(scene).toHaveAttribute(
+    "data-placed-count",
+    String(CONSTRUCTION_PIECES.length),
+  );
   await slider.focus();
   await slider.press("Home");
   await expect(slider).toHaveValue("0");
   await expect(scene).toHaveAttribute("data-phase", "approach");
   await expect(scene).toHaveAttribute("data-placed", "false");
+  await expect(scene).toHaveAttribute("data-placed-count", "0");
   await slider.press("End");
   await expect(slider).toHaveValue("100");
   await expect(scene).toHaveAttribute("data-phase", "completed");
   await expect(scene).toHaveAttribute("data-placed", "true");
+  await expect(scene).toHaveAttribute(
+    "data-placed-count",
+    String(CONSTRUCTION_PIECES.length),
+  );
 });
 
 test("the workbench fits 320px and reduced motion keeps manual controls usable", async ({
@@ -194,8 +234,13 @@ test("the workbench fits 320px and reduced motion keeps manual controls usable",
   ).toHaveValue("100");
   await expect(scene).toHaveAttribute("data-phase", "completed");
   await expect(scene).toHaveAttribute("data-placed", "true");
+  await expect(scene).toHaveAttribute(
+    "data-placed-count",
+    String(CONSTRUCTION_PIECES.length),
+  );
   await panel.getByRole("button", { name: "Start", exact: true }).click();
   await expect(scene).toHaveAttribute("data-phase", "approach");
   await expect(scene).toHaveAttribute("data-placed", "false");
+  await expect(scene).toHaveAttribute("data-placed-count", "0");
   expect(errors).toEqual([]);
 });

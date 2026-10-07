@@ -172,7 +172,7 @@ button:focus-visible {
   position: relative;
 }
 .construction-track[data-animated="true"] {
-  height: calc(var(--construction-height) + clamp(1000px, 160svh, 1700px));
+  height: calc(var(--construction-height) + clamp(2400px, 340svh, 3600px));
 }
 .construction-track[data-animated="true"] .construction-stage {
   position: sticky;

@@ -11,6 +11,7 @@ import {
 } from "react";
 import type { MotionValue } from "motion/react";
 import type { CraneSample } from "@/lib/crane-choreography";
+import { CONSTRUCTION_PIECES } from "@/lib/construction-plan";
 import { ConstructionFallback } from "./construction-3d/fallback";
 import styles from "./construction-3d/scene.module.css";
 
@@ -66,15 +67,27 @@ export default function DesktopConstructionScene({
     () => reportRenderer("fallback"),
     [reportRenderer],
   );
-  const frame = useCallback((value: number, sample: CraneSample) => {
-    if (!host.current) return;
-    // Describe transforms applied to the real scene, including reverse seeks.
-    const data = host.current.dataset;
-    data.progress = value.toFixed(4);
-    data.phase = sample.phase;
-    data.attached = String(sample.attached);
-    data.placed = String(sample.placed);
-  }, []);
+  const frame = useCallback(
+    (
+      value: number,
+      sample: CraneSample,
+      rendered: { pieceCount: number; placedCount: number },
+    ) => {
+      if (!host.current) return;
+      // Describe transforms applied to the real scene, including reverse seeks.
+      const data = host.current.dataset;
+      data.progress = value.toFixed(4);
+      data.phase = sample.phase;
+      data.attached = String(sample.attached);
+      data.placed = String(sample.placed);
+      data.activePiece = CONSTRUCTION_PIECES[sample.activePieceIndex].id;
+      data.liftIndex = String(sample.activePieceIndex);
+      data.placedCount = String(rendered.placedCount);
+      data.pieceCount = String(rendered.pieceCount);
+      data.cycleProgress = sample.cycleProgress.toFixed(4);
+    },
+    [],
+  );
 
   useEffect(() => {
     const element = host.current;

@@ -1,8 +1,14 @@
 "use client";
 
-import { memo, useLayoutEffect, useRef } from "react";
+import { memo, useLayoutEffect, useMemo, useRef } from "react";
 import type {} from "@react-three/fiber";
 import { Euler, InstancedMesh, Matrix4, Quaternion, Vector3 } from "three";
+import {
+  CONSTRUCTION_PIECES,
+  PICKUP_SURFACE_HEIGHT,
+  liftingEyes,
+  type ConstructionPiece,
+} from "@/lib/construction-plan";
 
 type Point = [number, number, number];
 type Part = {
@@ -324,34 +330,132 @@ export const CraneHook = memo(function CraneHook() {
   );
 });
 
-const loadPanels = [-1.05, -0.35, 0.35, 1.05].flatMap((x) =>
-  [-0.531, 0.531].map((z) => box([x, 0, z], [0.678, 0.675, 0.014])),
-);
-const loadBolts = [-1.31, -0.69, -0.01, 0.69, 1.31].flatMap((x) =>
-  [-0.25, 0.25].flatMap((y) =>
-    [-0.546, 0.546].map((z) => box([x, y, z], [0.024, 0.024, 0.024])),
-  ),
-);
-const loadEyes = [-1.1, 1.1].flatMap((x) =>
-  [-0.36, 0.36].map((z) => box([x, 0.43, z], [1, 1, 1])),
-);
+function prefabDetails(piece: ConstructionPiece) {
+  const [width, height, depth] = piece.size;
+  const graphite = piece.kind === "t-column";
+  const cap = piece.kind === "t-cap";
+  const panels: Part[] = [];
+  const bolts: Part[] = [];
+  const accents: Part[] = [];
+  const sockets: Part[] = [];
+  const eyes = liftingEyes(piece);
+  const columns = cap ? 4 : 1;
+  const rows = Math.max(1, Math.ceil(height / 1.15));
+  const panelWidth = width / columns;
+  const panelHeight = height / rows;
 
-export const ConstructionLoad = memo(function ConstructionLoad() {
+  for (let column = 0; column < columns; column++) {
+    const x = -width / 2 + (column + 0.5) * panelWidth;
+    for (let row = 0; row < rows; row++) {
+      const y = -height / 2 + (row + 0.5) * panelHeight;
+      for (const side of [-1, 1]) {
+        panels.push(
+          box(
+            [x, y, side * (depth / 2 + 0.006)],
+            [panelWidth - 0.022, panelHeight - 0.025, 0.012],
+          ),
+        );
+        for (const dx of [-1, 1]) {
+          for (const dy of [-1, 1]) {
+            bolts.push(
+              box(
+                [
+                  x + dx * (panelWidth / 2 - 0.055),
+                  y + dy * (panelHeight / 2 - 0.07),
+                  side *
+                    (depth / 2 +
+                      (side === 1 && piece.accent === "orange-front"
+                        ? 0.033
+                        : 0.018)),
+                ],
+                [0.016, 0.013, 0.016],
+                [Math.PI / 2, 0, 0],
+              ),
+            );
+          }
+        }
+      }
+    }
+  }
+  if (graphite) {
+    // Side panels and recessed-looking joints keep tall columns from reading
+    // as featureless boxes when the camera sees their left faces.
+    for (const side of [-1, 1]) {
+      for (let row = 0; row < rows; row++) {
+        panels.push(
+          box(
+            [
+              side * (width / 2 + 0.006),
+              -height / 2 + (row + 0.5) * panelHeight,
+              0,
+            ],
+            [0.012, panelHeight - 0.025, depth - 0.03],
+          ),
+        );
+      }
+    }
+  }
+  if (piece.accent === "orange-front") {
+    accents.push(
+      box([0, 0, depth / 2 + 0.019], [width - 0.025, height - 0.025, 0.015]),
+    );
+  }
+  if (piece.accent === "orange-top") {
+    accents.push(
+      box([0, height / 2 + 0.006, 0], [width - 0.014, 0.012, depth - 0.014]),
+    );
+  }
+  eyes.forEach(([x, , z]) => {
+    sockets.push(box([x, height / 2 + 0.012, z], [0.136, 0.024, 0.104]));
+  });
+
+  return {
+    body: [box([0, 0, 0], [...piece.size])],
+    bodyColor: graphite ? GRAPHITE : cap ? ORANGE_DARK : CONCRETE,
+    panelColor: graphite ? "#414844" : cap ? ORANGE : "#e4dbca",
+    boltColor: graphite || cap ? "#8a9289" : "#b0ad9d",
+    accents,
+    panels,
+    bolts,
+    sockets,
+    eyes: eyes.map((position) => box(position, [0.64, 0.64, 0.64])),
+  };
+}
+
+/** All geometry is piece-local, including its removable lifting hardware. */
+export const ConstructionPieceModel = memo(function ConstructionPieceModel({
+  piece,
+}: {
+  piece: ConstructionPiece;
+}) {
+  const geometry = useMemo(() => prefabDetails(piece), [piece]);
+
   return (
     <group>
-      <Parts color={ORANGE_DARK} items={[box([0, 0, 0], [2.8, 0.72, 1.05])]} />
-      <Parts color={ORANGE} items={loadPanels} />
+      <Parts color={geometry.bodyColor} items={geometry.body} />
+      <Parts color={geometry.panelColor} items={geometry.panels} />
+      {geometry.accents.length > 0 && (
+        <Parts
+          color={piece.kind === "t-cap" ? ORANGE_LIGHT : ORANGE}
+          items={geometry.accents}
+        />
+      )}
       <Parts
-        color={ORANGE_LIGHT}
-        items={[box([0, 0.365, 0], [2.79, 0.015, 1.04])]}
+        color={geometry.boltColor}
+        items={geometry.bolts}
+        shape="cylinder"
+        metalness={0.5}
+        roughness={0.5}
       />
-      <Parts
-        color={GRAPHITE}
-        items={loadBolts}
-        metalness={0.6}
-        roughness={0.4}
-      />
-      <Parts color={STEEL} shape="eye" items={loadEyes} metalness={0.6} />
+      <group name="lifting-eyes">
+        <Parts color={STEEL} items={geometry.sockets} metalness={0.6} />
+        <Parts
+          color={STEEL}
+          shape="eye"
+          items={geometry.eyes}
+          metalness={0.6}
+        />
+      </group>
     </group>
   );
 });
@@ -371,13 +475,15 @@ const site = (() => {
   const steel = parts[STEEL];
   const orange = parts[ORANGE];
   const timber = parts[WOOD];
-  const bolts: Part[] = [];
   const skin: Part[] = [];
   const hats: Part[] = [];
   const wheels: Part[] = [];
 
   concrete.push(box([-0.6, 0.105, 0.6], [7.1, 0.21, 4.9]));
   parts["#bcb8a9"].push(box([-0.6, 0.018, 0.6], [7.28, 0.036, 5.08]));
+  // A slightly lower front apron gives every staged component real support.
+  concrete.push(box([-0.35, 0.09, 3.745], [7.62, 0.18, 1.39]));
+  parts["#bcb8a9"].push(box([-0.35, 0.016, 3.745], [7.78, 0.032, 1.55]));
   // Narrow expansion joints give the site slab a scale without using textures.
   for (const x of [-3, -1.2, 0.6, 2.4]) {
     parts["#bcb8a9"].push(box([x, 0.214, 0.6], [0.013, 0.005, 4.8]));
@@ -385,27 +491,12 @@ const site = (() => {
   for (const z of [-0.65, 0.85, 2.35]) {
     parts["#bcb8a9"].push(box([-0.6, 0.214, z], [7.02, 0.005, 0.013]));
   }
-
-  // The orange load completes the top of the T. Its landing height is 4.79.
-  dark.push(box([-1.1, 2.505, 0.45], [0.86, 4.57, 0.88]));
-  dark.push(box([-1.1, 0.35, 0.45], [1.15, 0.27, 1.17]));
-  concrete.push(box([0.98, 2.16, 0.18], [0.7, 3.89, 0.85]));
-  concrete.push(box([1.55, 4.06, 0.18], [1.84, 0.66, 0.85]));
-  concrete.push(box([2.15, 3.28, 0.18], [0.66, 1.56, 0.85]));
-  concrete.push(box([1.55, 2.55, 0.18], [1.84, 0.58, 0.85]));
-  orange.push(box([0.98, 1.25, 0.622], [0.72, 2.06, 0.024]));
-  orange.push(box([1.57, 4.397, 0.18], [1.82, 0.025, 0.84]));
-
-  for (const height of [1.12, 2.12, 3.12, 4.12]) {
-    steel.push(box([-1.1, height, 0.899], [0.86, 0.018, 0.012]));
-    steel.push(box([-1.538, height, 0.45], [0.012, 0.018, 0.87]));
-    for (const x of [-1.44, -0.77]) {
-      bolts.push(box([x, height + 0.09, 0.916], [0.025, 0.025, 0.025]));
-    }
+  for (const x of [-3.1, -1.05, 1.1]) {
+    parts["#bcb8a9"].push(box([x, 0.182, 3.745], [0.013, 0.004, 1.36]));
   }
-  for (const x of [0.7, 1.2, 1.87, 2.35]) {
-    bolts.push(box([x, 4.09, 0.622], [0.04, 0.04, 0.025]));
-  }
+  // Flush anchoring plates end at the first column's specified bottom face.
+  dark.push(box([-1.1, 0.205, 0.45], [1.15, 0.03, 1.17]));
+  steel.push(box([0.98, 0.205, 0.18], [0.97, 0.03, 1.09]));
 
   // Scaffold stays open around the landing pad and the load's approach path.
   for (const x of [-2.24, -0.12]) {
@@ -427,7 +518,7 @@ const site = (() => {
     steel.push(beam([-2.24, y, -0.42], [-0.12, y + 1.29, -0.42], 0.032));
   }
   for (const y of [1.7, 3.0]) {
-    timber.push(box([-1.18, y, 1.035], [2.33, 0.07, 0.42]));
+    timber.push(box([-1.18, y, 1.18], [2.33, 0.07, 0.3]));
     timber.push(box([-2.17, y, 0.35], [0.31, 0.07, 1.55]));
   }
   for (let step = 0; step < 11; step++) {
@@ -442,13 +533,38 @@ const site = (() => {
     steel.push(box([x, 2.08, 1.15], [0.027, 0.68, 0.027]));
   }
 
-  // The pickup pallet is centered underneath the animation's ground position.
-  for (const z of [2.08, 2.5, 2.92]) {
-    timber.push(box([-3.4, 0.305, z], [2.66, 0.18, 0.11]));
-  }
-  for (let plank = 0; plank < 8; plank++) {
-    timber.push(box([-4.55 + plank * 0.33, 0.442, 2.5], [0.25, 0.09, 1.12]));
-  }
+  // Pallet tops match the shared pickup plane, including the lower front apron.
+  CONSTRUCTION_PIECES.forEach((piece) => {
+    const [x, , z] = piece.pickup;
+    const width = piece.size[0] + 0.09;
+    const depth = piece.size[2] + 0.08;
+    const floor = z > 3.05 ? 0.18 : 0.21;
+    const deckThickness = 0.055;
+    const bearerTop = PICKUP_SURFACE_HEIGHT - deckThickness;
+    const bearerHeight = bearerTop - floor;
+    for (const side of [-1, 1]) {
+      timber.push(
+        box(
+          [x, floor + bearerHeight / 2, z + side * depth * 0.32],
+          [width, bearerHeight, 0.095],
+        ),
+      );
+    }
+    const planks = Math.max(3, Math.ceil(width / 0.32));
+    const pitch = width / planks;
+    for (let plank = 0; plank < planks; plank++) {
+      timber.push(
+        box(
+          [
+            x - width / 2 + (plank + 0.5) * pitch,
+            PICKUP_SURFACE_HEIGHT - deckThickness / 2,
+            z,
+          ],
+          [pitch - 0.022, deckThickness, depth],
+        ),
+      );
+    }
+  });
   for (let beamIndex = 0; beamIndex < 5; beamIndex++) {
     dark.push(
       box(
@@ -517,7 +633,7 @@ const site = (() => {
     orange.push(box([x, y + 0.508, z + 0.014], [0.2, 0.023, 0.18]));
   }
   worker(-2.78, 0.22, 0.21, 0.1);
-  worker(-1.91, 1.75, 1.015, -0.07);
+  worker(-1.91, 1.75, 1.18, -0.07);
   worker(1.75, 0.22, 1.39, 0.1);
 
   // Loose anchor plates and rebar at the edge of the work area.
@@ -529,14 +645,13 @@ const site = (() => {
     steel.push(box([0.65, y, -1.08], [0.32, 0.022, 0.022]));
     steel.push(box([0.65, y, -1.28], [0.32, 0.022, 0.022]));
   }
-  return { parts, bolts, skin, hats, wheels };
+  return { parts, skin, hats, wheels };
 })();
 
 export const BuildingSite = memo(function BuildingSite() {
   return (
     <group>
       <Batch parts={site.parts} />
-      <Parts color="#a8b0a8" items={site.bolts} shape="sphere" />
       <Parts color="#b5815d" items={site.skin} shape="sphere" />
       <Parts color={ORANGE_LIGHT} items={site.hats} shape="sphere" />
       <Parts color={GRAPHITE} items={site.wheels} shape="cylinder" />
