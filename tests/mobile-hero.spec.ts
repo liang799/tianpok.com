@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 const mobileHeadline = /I build software\.\s*And I care\s*how it feels\./;
 
-async function expectMobileHero(page: Page) {
+async function expectMobileHero(page: Page, { hydrated = true } = {}) {
   await expect(page.getByRole("heading", { level: 1 })).toHaveAccessibleName(
     mobileHeadline,
   );
@@ -12,6 +12,10 @@ async function expectMobileHero(page: Page) {
   const artwork = page.locator(".mobile-construction-art");
   const image = artwork.locator("img");
   await expect(artwork).toBeVisible();
+  if (hydrated) {
+    await expect(page.getByTestId("desktop-construction-scene")).toHaveCount(0);
+  }
+  await expect(page.locator(".hero-art canvas")).toHaveCount(0);
   await expect(image).toBeVisible();
   await expect
     .poll(() =>
@@ -49,12 +53,18 @@ for (const viewport of [
 ]) {
   test(`mobile hero fits ${viewport.width}px with readable text and a loaded illustration`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     await page.setViewportSize(viewport);
     await page.goto("/");
     await page.evaluate(() => document.fonts.ready);
     await expectMobileHero(page);
     await expect(page.getByRole("heading", { level: 1 })).toBeInViewport();
+    if (viewport.width === 390) {
+      await page.getByTestId("construction-stage").screenshot({
+        path: testInfo.outputPath("hero-mobile.png"),
+        animations: "disabled",
+      });
+    }
 
     const dimensions = await page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
@@ -135,7 +145,7 @@ test.describe("mobile without JavaScript", () => {
     page,
   }) => {
     await page.goto("/");
-    await expectMobileHero(page);
+    await expectMobileHero(page, { hydrated: false });
     await page.getByRole("link", { name: "View my work", exact: true }).click();
     await expect(page).toHaveURL("/#projects");
     await expect(

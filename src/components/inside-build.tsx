@@ -40,12 +40,12 @@ const layers = [
   },
   {
     title: "Motion & safeguards",
-    tag: "MOTION · ACCESSIBILITY",
-    file: "src/components/construction-hero.tsx",
+    tag: "THREE.JS · ACCESSIBILITY",
+    file: "src/lib/crane-choreography.ts",
     heading: "Movement with a fallback.",
     description:
-      "Native scroll drives a shared spring and individually layered artwork. Reduced-motion preferences and browsers without JavaScript receive the finished scene with ordinary scrolling.",
-    code: `const progress = useSpring(\n  scrollYProgress,\n  constructionSpring,\n);\n\n<DesktopConstructionScene\n  progress={progress}\n  animated\n/>`,
+      "Native scroll drives a shared spring and a real 3D crane. One deterministic model keeps its trolley, hoist, and load connected in either direction. A static vector scene keeps the architecture visible without WebGL.",
+    code: `// One progress value, a complete 3D pose\nconst frame = sampleCrane(progress);\n\ncrane.rotation.y = frame.boomRotation;\nload.position.set(...frame.loadPosition);\n\n// Seek backward to reverse the same lift.\nsampleCrane(0.5);`,
   },
 ] as const;
 
@@ -78,7 +78,7 @@ function MotionWorkbench() {
       <div className={styles.motionPreview}>
         <div className={styles.previewCaption}>
           <span>LIVE COMPONENT</span>
-          <span>Scroll → spring → layers</span>
+          <span>Scroll → spring → 3D scene</span>
         </div>
         <DesktopConstructionScene
           progress={reducedMotion ? input : smooth}
@@ -124,17 +124,18 @@ function MotionWorkbench() {
         <p className={styles.panelEyebrow}>03 / THE MOVEMENT</p>
         <h3>The same mechanism. In your hands.</h3>
         <p>
-          Scrub the sequence forward and backward. This is the hero’s actual
-          component, with the same spring settings and construction layers.
+          Scrub a complete crane lift forward and backward. This is the hero’s
+          actual 3D scene: lower the hook, lift the load, place the final piece,
+          and release. Every position comes from the same progress value.
         </p>
         <div className={styles.codeHeader}>
-          <span>Shared spring · current input</span>
+          <span>Deterministic lift · current input</span>
           <span>TS</span>
         </div>
         <pre className={styles.code}>
-          <code>{`// Shared settings · abridged\nconst constructionSpring = {\n  stiffness: ${constructionSpring.stiffness},\n  damping: ${constructionSpring.damping},\n  mass: ${constructionSpring.mass},\n};\n\n// Current workbench input\ninput.set(${(percent / 100).toFixed(2)});`}</code>
+          <code>{`// The hero and workbench share this input\ninput.set(${(percent / 100).toFixed(2)});\n\n// Sample any point in the lift, in either direction\nconst frame = sampleCrane(${(percent / 100).toFixed(2)});\n\n// Crane, cable, and load stay connected\nframe.hookPosition;\nframe.loadPosition;\nframe.attached;`}</code>
         </pre>
-        <SourceLink path="src/components/desktop-construction-scene.tsx" />
+        <SourceLink path="src/lib/crane-choreography.ts" />
       </div>
     </>
   );

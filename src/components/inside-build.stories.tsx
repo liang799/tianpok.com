@@ -45,7 +45,7 @@ export const StructureInspection: Story = {
       panel.getByRole("link", { name: "View source" }),
     ).toHaveAttribute(
       "href",
-      "https://github.com/liang799/tianpok.com/blob/main/src/components/construction-hero.tsx",
+      "https://github.com/liang799/tianpok.com/blob/main/src/lib/crane-choreography.ts",
     );
 
     const expose = panel.getByRole("button", { name: "Expose page layout" });
@@ -143,37 +143,47 @@ export const ManualMotion: Story = {
     const panelElement = canvas.getByRole("tabpanel", { name: /Motion/ });
     const panel = within(panelElement);
     const slider = panel.getByRole("slider", { name: /Assembly progress/ });
-    const finalArtwork = panelElement.querySelector(
-      '[data-motion-step="final-artwork"]',
+    const scene = panel.getByTestId("desktop-construction-scene");
+    await waitFor(
+      async () => {
+        await expect(scene).toHaveAttribute("data-renderer", "webgl");
+      },
+      { timeout: 20_000 },
     );
-    if (!finalArtwork)
-      throw new Error("The live construction component is missing");
 
     await userEvent.click(panel.getByRole("button", { name: "Halfway" }));
     await expect(slider).toHaveValue("50");
     await expect(panel.getByText("50%", { exact: true })).toBeVisible();
     await expect(panel.getByText(/input.set\(0.50\)/)).toBeVisible();
+    await waitFor(async () => {
+      await expect(scene).toHaveAttribute("data-phase", "slew");
+      await expect(scene).toHaveAttribute("data-attached", "true");
+      await expect(scene).toHaveAttribute("data-placed", "false");
+    });
 
     await userEvent.click(panel.getByRole("button", { name: "Complete" }));
     await expect(slider).toHaveValue("100");
     await waitFor(async () => {
-      await expect(
-        Number(getComputedStyle(finalArtwork).opacity),
-      ).toBeGreaterThan(0.99);
+      await expect(scene).toHaveAttribute("data-phase", "completed");
+      await expect(scene).toHaveAttribute("data-placed", "true");
+      await expect(scene).toHaveAttribute("data-attached", "false");
     });
 
     await userEvent.click(panel.getByRole("button", { name: "Start" }));
     await expect(slider).toHaveValue("0");
     await waitFor(async () => {
-      await expect(Number(getComputedStyle(finalArtwork).opacity)).toBeLessThan(
-        0.01,
-      );
+      await expect(scene).toHaveAttribute("data-phase", "approach");
+      await expect(scene).toHaveAttribute("data-placed", "false");
     });
     // Native range keyboard behavior is covered in Playwright; Storybook's
     // userEvent does not implement Home/End for input[type=range].
     fireEvent.change(slider, { target: { value: "42" } });
     await expect(slider).toHaveValue("42");
     await expect(panel.getByText("42%", { exact: true })).toBeVisible();
+    await waitFor(async () => {
+      await expect(scene).toHaveAttribute("data-phase", "lift");
+      await expect(scene).toHaveAttribute("data-attached", "true");
+    });
     await expect(
       canvasElement.ownerDocument.documentElement,
     ).not.toHaveAttribute("data-inspect-layout");

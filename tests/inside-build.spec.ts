@@ -1,8 +1,4 @@
-import { expect, test, type Locator } from "@playwright/test";
-
-async function opacity(element: Locator) {
-  return element.evaluate((node) => Number(getComputedStyle(node).opacity));
-}
+import { expect, test } from "@playwright/test";
 
 test("the workbench supports keyboard tabs, wrapping, and Home/End", async ({
   page,
@@ -112,7 +108,7 @@ test("project data drives the real card, source example, and destination", async
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("TREE");
 });
 
-test("motion presets and keyboard scrubbing control the actual assembly", async ({
+test("motion presets and keyboard scrubbing control the real 3D crane lift", async ({
   page,
 }) => {
   await page.goto("/");
@@ -120,31 +116,42 @@ test("motion presets and keyboard scrubbing control the actual assembly", async 
   await section.getByRole("tab", { name: /Motion/ }).click();
   const panel = section.getByRole("tabpanel", { name: /Motion/ });
   const slider = panel.getByRole("slider", { name: /Assembly progress/ });
-  const artwork = panel.locator('[data-motion-step="final-artwork"]');
-  const cap = panel.locator('[data-assembly-part="letter-cap"]');
+  const scene = panel.getByTestId("desktop-construction-scene");
+  await expect(scene).toHaveAttribute("data-renderer", "webgl", {
+    timeout: 20_000,
+  });
+  await expect(scene.locator("canvas")).toBeVisible();
 
   await panel.getByRole("button", { name: "Start", exact: true }).click();
   await expect(slider).toHaveValue("0");
-  await expect.poll(() => opacity(cap)).toBeLessThan(0.01);
+  await expect(scene).toHaveAttribute("data-phase", "approach");
+  await expect(scene).toHaveAttribute("data-attached", "false");
+  await expect(scene).toHaveAttribute("data-placed", "false");
   await panel.getByRole("button", { name: "Halfway" }).click();
   await expect(slider).toHaveValue("50");
   await expect(panel.getByText("50%", { exact: true })).toBeVisible();
   await expect(panel.locator("code")).toContainText("input.set(0.50)");
+  await expect(scene).toHaveAttribute("data-phase", "slew");
+  await expect(scene).toHaveAttribute("data-attached", "true");
+  await expect(scene).toHaveAttribute("data-placed", "false");
   await expect
-    .poll(() => opacity(panel.locator('[data-assembly-part="foundation"]')))
-    .toBeGreaterThan(0.99);
-  await expect.poll(() => opacity(cap)).toBeLessThan(0.01);
+    .poll(async () => Number(await scene.getAttribute("data-progress")))
+    .toBeCloseTo(0.5, 2);
 
   await panel.getByRole("button", { name: "Complete", exact: true }).click();
   await expect(slider).toHaveValue("100");
-  await expect.poll(() => opacity(artwork)).toBeGreaterThan(0.99);
+  await expect(scene).toHaveAttribute("data-phase", "completed");
+  await expect(scene).toHaveAttribute("data-placed", "true");
+  await expect(scene).toHaveAttribute("data-attached", "false");
   await slider.focus();
   await slider.press("Home");
   await expect(slider).toHaveValue("0");
-  await expect.poll(() => opacity(cap)).toBeLessThan(0.01);
+  await expect(scene).toHaveAttribute("data-phase", "approach");
+  await expect(scene).toHaveAttribute("data-placed", "false");
   await slider.press("End");
   await expect(slider).toHaveValue("100");
-  await expect.poll(() => opacity(artwork)).toBeGreaterThan(0.99);
+  await expect(scene).toHaveAttribute("data-phase", "completed");
+  await expect(scene).toHaveAttribute("data-placed", "true");
 });
 
 test("the workbench fits 320px and reduced motion keeps manual controls usable", async ({
@@ -174,6 +181,10 @@ test("the workbench fits 320px and reduced motion keeps manual controls usable",
     ).toBeLessThanOrEqual(width.viewport + 1);
   }
   const panel = section.getByRole("tabpanel", { name: /Motion/ });
+  const scene = panel.getByTestId("desktop-construction-scene");
+  await expect(scene).toHaveAttribute("data-renderer", "webgl", {
+    timeout: 20_000,
+  });
   await expect(
     panel.getByText("Reduced motion · instant updates"),
   ).toBeVisible();
@@ -181,12 +192,10 @@ test("the workbench fits 320px and reduced motion keeps manual controls usable",
   await expect(
     panel.getByRole("slider", { name: /Assembly progress/ }),
   ).toHaveValue("100");
-  await expect
-    .poll(() => opacity(panel.locator('[data-motion-step="final-artwork"]')))
-    .toBeGreaterThan(0.99);
+  await expect(scene).toHaveAttribute("data-phase", "completed");
+  await expect(scene).toHaveAttribute("data-placed", "true");
   await panel.getByRole("button", { name: "Start", exact: true }).click();
-  await expect
-    .poll(() => opacity(panel.locator('[data-assembly-part="letter-cap"]')))
-    .toBeLessThan(0.01);
+  await expect(scene).toHaveAttribute("data-phase", "approach");
+  await expect(scene).toHaveAttribute("data-placed", "false");
   expect(errors).toEqual([]);
 });

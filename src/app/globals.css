@@ -172,11 +172,12 @@ button:focus-visible {
   position: relative;
 }
 .construction-track[data-animated="true"] {
-  height: calc(var(--construction-height) + clamp(540px, 90svh, 960px));
+  height: calc(var(--construction-height) + clamp(1000px, 160svh, 1700px));
 }
 .construction-track[data-animated="true"] .construction-stage {
   position: sticky;
   top: var(--construction-sticky-top, 0px);
+  min-height: max(590px, calc(100svh - 100px));
   background: var(--background);
 }
 .construction-cue {
@@ -363,46 +364,25 @@ button:focus-visible {
 .text-link:hover svg {
   transform: translateX(3px);
 }
+.hero-atmosphere {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 78% 78%, #fce5d3 0%, transparent 55%);
+}
 .hero-art {
   position: absolute;
-  right: 7.2%;
+  right: 0;
   bottom: 0;
-  width: 81%;
-  height: calc(100% + 5px);
+  width: 69%;
+  height: 100%;
   z-index: 1;
   pointer-events: none;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
 }
-.hero-art > svg,
-.desktop-construction-fallback img {
-  /* Keep the mask on the actual 3:2 artwork, not its letterboxed wrapper. */
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: 100%;
-  display: block;
-  mask-image:
-    linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent),
-    linear-gradient(transparent, #000 2%);
-  mask-composite: intersect;
-}
-.desktop-construction-fallback {
-  display: contents;
-}
-.desktop-construction-fallback img {
-  object-fit: contain;
-  object-position: right bottom;
-}
-.hero-ground {
-  display: none;
-  position: absolute;
+.hero-art > .construction-scene {
   width: 100%;
-  height: 46px;
-  bottom: 0;
-  left: 0;
-  z-index: 0;
+  height: 100%;
+  aspect-ratio: auto;
 }
 .hero-note {
   position: absolute;
@@ -422,38 +402,7 @@ button:focus-visible {
 }
 .hero-note-process {
   top: 45px;
-  right: 8%;
-}
-.hero-note-standards {
-  bottom: 104px;
-  right: 4.4%;
-  color: #deded9;
-  z-index: 3;
-  font-size: 9px;
-  letter-spacing: 0.17em;
-}
-.hero-outbuilding {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 13.1%;
-  height: 41%;
-  z-index: 2;
-  pointer-events: none;
-}
-.hero-skyline-extension {
-  position: absolute;
-  bottom: 0;
-  left: 19%;
-  width: 28%;
-  height: 44%;
-  mask-image: linear-gradient(
-    90deg,
-    transparent,
-    #000 18%,
-    #000 80%,
-    transparent
-  );
+  right: 1.5%;
 }
 .blueprint-grid {
   display: none;
@@ -842,11 +791,11 @@ button:focus-visible {
     top: 37px;
   }
   .hero-art {
-    width: 80%;
-    right: 5%;
+    width: 65%;
+    right: 0;
   }
   .hero-note-process {
-    right: 3%;
+    right: 1.5%;
   }
   .eyebrow {
     font-size: 10px;
@@ -901,15 +850,11 @@ button:focus-visible {
     font-size: 5.4vw;
   }
   .hero-art {
-    width: 85%;
-    height: 65%;
-    right: 0;
+    width: 78%;
+    height: 56%;
+    right: -2%;
   }
   .hero-note {
-    display: none;
-  }
-  .hero-outbuilding,
-  .hero-skyline-extension {
     display: none;
   }
   .hero-description {
@@ -932,7 +877,8 @@ button:focus-visible {
 }
 @media (min-width: 640px) and (max-width: 700px) {
   .hero-art {
-    width: 70%;
+    width: 72%;
+    height: 47%;
   }
 }
 @media (max-width: 639px) {
@@ -1065,7 +1011,7 @@ button:focus-visible {
   .hero-actions,
   .construction-cue,
   .hero-art,
-  .hero-ground,
+  .hero-atmosphere,
   .hero .blueprint-grid,
   .hero-heading::after {
     display: none;

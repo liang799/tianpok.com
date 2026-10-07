@@ -53,6 +53,15 @@ export const Desktop: Story = {
       "href",
       "https://github.com/liang799",
     );
+    const scene = hero.getByTestId("desktop-construction-scene");
+    await waitFor(
+      () => {
+        expect(scene).toHaveAttribute("data-renderer", "webgl");
+        expect(scene.querySelector("canvas")).toBeVisible();
+      },
+      { timeout: 10_000 },
+    );
+    await expect(scene.querySelector("img, image")).toBeNull();
   },
 };
 
@@ -80,12 +89,27 @@ export const Mobile: Story = {
       ".mobile-construction-art img",
     );
     await expect(illustration).toBeVisible();
-    await waitFor(() => {
-      expect(illustration).toBeInstanceOf(HTMLImageElement);
-      expect(illustration?.naturalWidth).toBeGreaterThan(1);
-      expect(illustration?.currentSrc).toContain(
-        "/images/mobile-construction.webp",
-      );
-    });
+    await waitFor(
+      () => {
+        expect(illustration?.naturalWidth).toBeGreaterThan(1);
+        expect(illustration?.currentSrc).toContain(
+          "/images/mobile-construction.webp",
+        );
+      },
+      { timeout: 10_000 },
+    );
+    await expect(canvas.queryByTestId("desktop-construction-scene")).toBeNull();
+    await expect(
+      context.canvasElement.querySelector(".hero-art canvas"),
+    ).toBeNull();
+    const track = canvas.getByTestId("construction-track");
+    const stage = canvas.getByTestId("construction-stage");
+    await expect(track).toHaveAttribute("data-animated", "false");
+    await expect(
+      Math.abs(
+        track.getBoundingClientRect().height -
+          stage.getBoundingClientRect().height,
+      ),
+    ).toBeLessThan(2);
   },
 };

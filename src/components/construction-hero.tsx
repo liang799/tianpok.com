@@ -2,6 +2,7 @@
 
 import {
   memo,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -20,47 +21,57 @@ import { MobileConstructionArt } from "./mobile-construction-art";
 import Link from "next/link";
 import { ArrowRight } from "./icons";
 import { constructionSpring } from "@/lib/construction-motion";
+import { sampleCrane } from "@/lib/crane-choreography";
 
 const ConstructionArtwork = memo(DesktopConstructionScene);
-
-const motionQuery =
-  "(min-width: 640px) and (prefers-reduced-motion: no-preference)";
-function subscribeToMotionPreference(onChange: () => void) {
-  const query = window.matchMedia(motionQuery);
-  query.addEventListener("change", onChange);
-  return () => query.removeEventListener("change", onChange);
+const mobileQuery = "(max-width: 639px)";
+const reducedQuery = "(prefers-reduced-motion: reduce)";
+function subscribe(query: string, onChange: () => void) {
+  const media = window.matchMedia(query);
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
 }
-
-const phases = [
-  "Scroll to build",
-  "Foundations",
-  "Structure",
-  "Finishing touches",
-  "Built. Keep exploring.",
-];
+const subscribeMobile = (onChange: () => void) =>
+  subscribe(mobileQuery, onChange);
+const subscribeReduced = (onChange: () => void) =>
+  subscribe(reducedQuery, onChange);
 
 export function ConstructionHero({ children }: { children: ReactNode }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLElement>(null);
-  const motionAllowed = useSyncExternalStore(
-    subscribeToMotionPreference,
-    () => window.matchMedia(motionQuery).matches,
+  const isMobile = useSyncExternalStore(
+    subscribeMobile,
+    () => window.matchMedia(mobileQuery).matches,
     () => false,
   );
+  const reducedMotion = useSyncExternalStore(
+    subscribeReduced,
+    () => window.matchMedia(reducedQuery).matches,
+    () => true,
+  );
+  const [renderer, setRenderer] = useState<"loading" | "webgl" | "fallback">(
+    "loading",
+  );
   const [size, setSize] = useState({ stage: 0, viewport: 0 });
-  const [phase, setPhase] = useState(0);
-  const phaseRef = useRef(0);
-  const initialAnchorHandled = useRef(false);
-  // Tall mobile layouts pin only once the illustration fits on screen.
+  const [phase, setPhase] = useState("Scroll to build");
+  const initialAnchor = useRef({
+    hash: "",
+    static: false,
+    animated: false,
+    cancelled: false,
+  });
   const stickyTop = Math.min(0, size.viewport - size.stage);
-  const animated = motionAllowed && size.stage > 0;
+  const animated =
+    !isMobile && !reducedMotion && renderer === "webgl" && size.stage > 0;
   const { scrollYProgress } = useScroll({
     target: trackRef,
     offset: [`start ${stickyTop}px`, `end ${size.stage + stickyTop}px`],
   });
-  // A wheel tick can jump hundreds of pixels. Filter that input once for the
-  // entire scene so every piece stays in sync without a bouncy overshoot.
   const assemblyProgress = useSpring(scrollYProgress, constructionSpring);
+  const onRendererChange = useCallback(
+    (next: "loading" | "webgl" | "fallback") => setRenderer(next),
+    [],
+  );
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -86,36 +97,76 @@ export function ConstructionHero({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!animated || initialAnchorHandled.current) return;
-    // Wait for the expanded sticky stage to finish its resize before restoring
-    // a direct section link whose initial position used the static HTML height.
+    const cancelOnInput = () => {
+      if (initialAnchor.current.hash) initialAnchor.current.cancelled = true;
+    };
+    const cancelOnResize = () => {
+      initialAnchor.current.cancelled = true;
+    };
+    const cancelOnKey = (event: KeyboardEvent) => {
+      if (
+        [
+          "ArrowUp",
+          "ArrowDown",
+          "PageUp",
+          "PageDown",
+          "Home",
+          "End",
+          " ",
+        ].includes(event.key)
+      )
+        cancelOnInput();
+    };
+    window.addEventListener("wheel", cancelOnInput, { passive: true });
+    window.addEventListener("touchstart", cancelOnInput, { passive: true });
+    window.addEventListener("pointerdown", cancelOnInput);
+    window.addEventListener("keydown", cancelOnKey);
+    window.addEventListener("resize", cancelOnResize);
+    return () => {
+      window.removeEventListener("wheel", cancelOnInput);
+      window.removeEventListener("touchstart", cancelOnInput);
+      window.removeEventListener("pointerdown", cancelOnInput);
+      window.removeEventListener("keydown", cancelOnKey);
+      window.removeEventListener("resize", cancelOnResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    const restoration = initialAnchor.current;
+    const layout = animated ? "animated" : "static";
+    if (!size.stage || restoration.cancelled || restoration[layout]) return;
     if (stageRef.current?.getBoundingClientRect().height !== size.stage) return;
     const hash = window.location.hash.slice(1);
     const target = document.getElementById(hash);
-    initialAnchorHandled.current = true;
-    if (!target || hash === "home") return;
+    if (!target || hash === "home") {
+      restoration[layout] = true;
+      return;
+    }
+    if (restoration.hash && restoration.hash !== hash) return;
+    restoration.hash = hash;
+    // Back can restore a scroll offset from an expanded runway while the
+    // offscreen renderer stays lazy. Restore the measured HTML layout first,
+    // and align once more if the initial WebGL layout subsequently expands.
     const frame = requestAnimationFrame(() => {
+      if (restoration.cancelled || window.location.hash.slice(1) !== hash)
+        return;
+      if (stageRef.current?.getBoundingClientRect().height !== size.stage)
+        return;
       target.scrollIntoView({ behavior: "instant", block: "start" });
+      restoration[layout] = true;
+      if (animated) restoration.static = true;
     });
     return () => cancelAnimationFrame(frame);
   }, [animated, size.stage]);
 
-  useMotionValueEvent(assemblyProgress, "change", (progress) => {
-    const next =
-      progress >= 0.98
-        ? 4
-        : progress > 0.7
-          ? 3
-          : progress > 0.3
-            ? 2
-            : progress > 0.02
-              ? 1
-              : 0;
-    // React only updates the label at phase boundaries; Motion drives every frame.
-    if (next !== phaseRef.current) {
-      phaseRef.current = next;
-      setPhase(next);
-    }
+  useMotionValueEvent(assemblyProgress, "change", (value) => {
+    setPhase(
+      value < 0.015
+        ? "Scroll to build"
+        : value >= 0.98
+          ? "Built. Keep exploring."
+          : sampleCrane(value).phaseLabel,
+    );
   });
 
   return (
@@ -139,7 +190,7 @@ export function ConstructionHero({ children }: { children: ReactNode }) {
         data-component="ConstructionHero"
         aria-labelledby="hero-title"
       >
-        <div className="blueprint-grid" aria-hidden="true" />
+        <div className="hero-atmosphere" aria-hidden="true" />
         <div className="site-container relative z-10">
           <div className="hero-copy">
             {children}
@@ -153,7 +204,7 @@ export function ConstructionHero({ children }: { children: ReactNode }) {
                       strokeWidth="1.5"
                     />
                   </svg>
-                  <span>{phases[phase]}</span>
+                  <span>{phase}</span>
                 </div>
                 <div className="construction-progress">
                   <motion.span style={{ scaleX: assemblyProgress }} />
@@ -177,70 +228,15 @@ export function ConstructionHero({ children }: { children: ReactNode }) {
           People
           <span />
         </div>
-        <div className="hero-note hero-note-standards" aria-hidden="true">
-          Building
-          <br />
-          A brighter
-          <br />
-          Digital
-          <br />
-          Tomorrow
-          <span />
-        </div>
-        <svg
-          className="hero-skyline-extension"
-          viewBox="0 0 450 270"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <path
-            fill="#fbe6d7"
-            d="M0 246h20v-25h17v-12h15v61H0Zm43 24V198l27-12 15 8v76Zm42 0v-83h10v-30l26-13 25 12v114Zm55 0V111l26-13 30 12v160Zm52 0V80h9V58h8V38h7v20h9v22h12v190Zm49 0v-99h15v-40h18v-30l26-9 25 11v167Zm80 0V94l28-14 19 13v177Zm41 0V15l28-14 25 17v252Z"
-          />
-          <path
-            fill="#ffd9c0"
-            opacity=".7"
-            d="M12 270v-23h32v23Zm29 0v-38l21-8 18 7v39Zm37 0v-68h30v68Zm29 0v-91l22-9 17 9v91Zm48 0V148l25-9 23 12v119Zm49 0v-62h34v62Zm48 0V90l29-15 25 15v180Zm62 0v-105h29v105Zm33 0V119l26-8 34 15v144Z"
-          />
-        </svg>
         <div className="hero-art" aria-hidden="true">
-          {animated ? (
-            <ConstructionArtwork progress={assemblyProgress} animated />
-          ) : (
-            <picture className="desktop-construction-fallback">
-              <source
-                media="(min-width: 640px)"
-                srcSet="/images/desktop-construction.webp"
-              />
-              {/* A media source avoids downloading desktop artwork on phones. */}
-              <img
-                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'/%3E"
-                alt=""
-                width={1536}
-                height={1024}
-                fetchPriority="high"
-              />
-            </picture>
+          {!isMobile && (
+            <ConstructionArtwork
+              progress={assemblyProgress}
+              animated={animated}
+              onRendererChange={onRendererChange}
+            />
           )}
         </div>
-        <svg
-          className="hero-outbuilding"
-          viewBox="0 0 210 255"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <path fill="#aaa49e" d="M88 95V12l45-18 33 21v98Z" />
-          <path fill="#393a37" d="m1 43 154-31 55 28v215H1Z" />
-          <path fill="#242725" d="m1 43 154-31v243H1Z" />
-          <path fill="#30332f" d="m155 12 55 28v215h-55Z" />
-          <path
-            d="M177 36v205m-11-213v46m28-32v193M166 52l28-10M166 73l28-11"
-            stroke="#55584e"
-            strokeWidth="2"
-            fill="none"
-          />
-          <path d="M0 240h210" stroke="#ff642a" strokeWidth="1" />
-        </svg>
         <MobileConstructionArt />
         <Link href="#projects" className="mobile-hero-cta">
           View my work <ArrowRight />

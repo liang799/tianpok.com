@@ -2,9 +2,17 @@ import { expect, test } from "@playwright/test";
 import sharp from "sharp";
 
 for (const reducedMotion of ["no-preference", "reduce"] as const) {
-  test(`desktop artwork blends into the hero with ${reducedMotion} motion`, async ({
+  test(`desktop renders a transparent, nonblank 3D scene with ${reducedMotion} motion`, async ({
     page,
   }, testInfo) => {
+    const rasterRequests: string[] = [];
+    page.on("request", (request) => {
+      if (
+        /\/images\/[^?]*construction[^?]*\.(webp|png|jpe?g)/.test(request.url())
+      ) {
+        rasterRequests.push(request.url());
+      }
+    });
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.emulateMedia({ reducedMotion });
     await page.goto("/");
@@ -14,66 +22,82 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
       String(reducedMotion === "no-preference"),
     );
 
-    const hero = page.getByTestId("construction-stage");
-    const bounds = await hero.boundingBox();
-    const art = await page.locator(".hero-art").boundingBox();
-    expect(bounds).not.toBeNull();
-    expect(art).not.toBeNull();
-    const renderedArtwork = page.locator(
-      ".hero-art > svg, .desktop-construction-fallback img",
-    );
-    await expect(renderedArtwork).toBeVisible();
-    const renderedBounds = await renderedArtwork.boundingBox();
-    expect(renderedBounds!.width).toBeGreaterThan(800);
-    expect(renderedBounds!.width / renderedBounds!.height).toBeCloseTo(1.5, 2);
-    // Both the SVG and static picture align a 3:2 image to the bottom right.
-    const scale = Math.min(art!.width / 1536, art!.height / 1024);
-    const left = art!.x + art!.width - 1536 * scale - bounds!.x;
-    const right = art!.x + art!.width - bounds!.x;
-    const top = art!.y + art!.height - 1024 * scale - bounds!.y;
-    const screenshot = await hero.screenshot({
-      animations: "disabled",
-      path: testInfo.outputPath("hero.png"),
+    const scene = page.getByTestId("desktop-construction-scene");
+    await expect(scene).toHaveAttribute("data-renderer", "webgl", {
+      timeout: 20_000,
     });
+    await expect(page.locator(".hero-art img, .hero-art image")).toHaveCount(0);
+    const canvas = scene.locator("canvas");
+    await expect(canvas).toBeVisible();
+    const renderedBounds = await canvas.boundingBox();
+    expect(renderedBounds!.width).toBeGreaterThan(400);
+    expect(renderedBounds!.height).toBeGreaterThan(250);
+    expect(
+      await canvas.evaluate((element: HTMLCanvasElement) => {
+        const context =
+          element.getContext("webgl2") || element.getContext("webgl");
+        return context?.getContextAttributes()?.alpha;
+      }),
+    ).toBe(true);
+
+    if (reducedMotion === "no-preference") {
+      const track = await page.getByTestId("construction-track").boundingBox();
+      const stage = page.getByTestId("construction-stage");
+      const stageBounds = await stage.boundingBox();
+      const stickyTop = await stage.evaluate((element) =>
+        parseFloat(getComputedStyle(element).top),
+      );
+      await page.mouse.move(20, 200);
+      await page.mouse.wheel(
+        0,
+        track!.y - stickyTop + (track!.height - stageBounds!.height) * 0.59,
+      );
+      await expect
+        .poll(async () =>
+          Math.abs(Number(await scene.getAttribute("data-progress")) - 0.59),
+        )
+        .toBeLessThan(0.001);
+      await expect(scene).toHaveAttribute("data-phase", "slew");
+      await expect(scene).toHaveAttribute("data-attached", "true");
+    }
+
+    const screenshot = await canvas.screenshot({
+      animations: "disabled",
+      path: testInfo.outputPath("scene-3d.png"),
+    });
+    const heroScreenshot = await page
+      .getByTestId("construction-stage")
+      .screenshot({
+        animations: "disabled",
+        path: testInfo.outputPath("hero-3d.png"),
+      });
     await testInfo.attach("hero", {
-      body: screenshot,
+      body: heroScreenshot,
       contentType: "image/png",
     });
     const { data, info } = await sharp(screenshot)
       .removeAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
-    const pixel = (x: number, y: number, channel: number) =>
-      data[
-        (Math.round(y) * info.width + Math.round(x)) * info.channels + channel
-      ];
-    // A blank or fully faded image must not pass the edge checks below.
-    const craneContrast: number[] = [];
-    for (let x = 1060; x <= 1300; x += 20) {
-      for (let y = 120; y <= 240; y += 20) {
-        craneContrast.push(
-          pixel(left + x * scale, top + y * scale, 0) -
-            pixel(left + x * scale, top + y * scale, 2),
-        );
-      }
+    let orangePixels = 0;
+    let darkPixels = 0;
+    const shades = new Set<string>();
+    for (let index = 0; index < data.length; index += info.channels) {
+      const [red, green, blue] = data.subarray(index, index + 3);
+      if (red > 130 && red - green > 25 && red - blue > 45) orangePixels++;
+      if (Math.max(red, green, blue) < 110) darkPixels++;
+      shades.add(`${red >> 4},${green >> 4},${blue >> 4}`);
     }
-    expect(Math.max(...craneContrast)).toBeGreaterThan(80);
-
-    for (const [name, x, sourceY] of [
-      ["left sky", left, 35],
-      ["right cloud", right, 400],
-    ] as const) {
-      const y = top + sourceY * scale;
-      const jump = Math.max(
-        ...[0, 1, 2].map((channel) =>
-          Math.abs(pixel(x - 2, y, channel) - pixel(x + 2, y, channel)),
-        ),
-      );
-      expect(
-        jump,
-        `${name} must not end at a visible rectangular seam`,
-      ).toBeLessThanOrEqual(3);
-    }
+    // Check the full rendered scene without depending on a particular camera
+    // pixel: lit orange machinery and dark structural parts must both exist.
+    const pixelCount = info.width * info.height;
+    expect(orangePixels / pixelCount).toBeGreaterThan(0.001);
+    expect(darkPixels / pixelCount).toBeGreaterThan(0.001);
+    expect(shades.size).toBeGreaterThan(40);
+    expect(
+      rasterRequests,
+      "The hero must not download generated artwork",
+    ).toEqual([]);
   });
 }
 
