@@ -33,17 +33,15 @@ const projectRoutes = [
   },
 ];
 
-test("home presents the construction headline and six linked projects", async ({
+test("home presents the software headline and six linked projects", async ({
   page,
 }) => {
   const response = await page.goto("/");
 
   expect(response?.status()).toBe(200);
-  await expect(page).toHaveTitle(
-    "Tian Pok — Developer & Builder of Digital Things",
-  );
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    /Ideas\s*Under\s*Construction/,
+  await expect(page).toHaveTitle("Tian Pok — Software Engineer in Singapore");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveAccessibleName(
+    /I build software\.\s*And I care\s*how it feels\./,
   );
   await expect(
     page
@@ -169,6 +167,30 @@ test("project filters update both the visible cards and selection state", async 
   }
 });
 
+test("featured work controls reveal the remaining projects and return to the first", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/#projects");
+  const work = page.getByRole("region", { name: "Featured work" });
+  const previous = work.getByRole("button", { name: "Previous projects" });
+  const next = work.getByRole("button", { name: "Next projects" });
+  await expect(previous).toBeDisabled();
+  await expect(next).toBeEnabled();
+  await expect(work.getByRole("link", { name: /^Vigour/ })).toBeInViewport();
+
+  await next.click();
+  await expect(
+    work.getByRole("link", { name: /^Onesystem Technologies/ }),
+  ).toBeInViewport();
+  await expect(next).toBeDisabled();
+  await expect(previous).toBeEnabled();
+  await previous.click();
+  await expect(work.getByRole("link", { name: /^Vigour/ })).toBeInViewport();
+  await expect(previous).toBeDisabled();
+});
+
 test("mobile navigation opens, closes with Escape, and follows a section link", async ({
   page,
 }) => {
@@ -195,7 +217,7 @@ test("mobile navigation opens, closes with Escape, and follows a section link", 
     "false",
   );
   await expect(
-    page.getByRole("heading", { name: "Portfolio", exact: true }),
+    page.getByRole("heading", { name: "Featured work", exact: true }),
   ).toBeInViewport();
 });
 
@@ -258,22 +280,23 @@ for (const width of [320, 390, 768, 1024, 1440]) {
       ).toBeLessThanOrEqual(dimensions.viewport + 1);
 
       if (route === "/") {
-        const heading = await page
-          .locator(".hero-heading span")
-          .last()
-          .boundingBox();
-        expect(
-          heading,
-          "The construction heading should have visible bounds",
-        ).not.toBeNull();
-        expect(
-          heading!.x,
-          `The hero heading is clipped on the left at ${width}px`,
-        ).toBeGreaterThanOrEqual(0);
-        expect(
-          heading!.x + heading!.width,
-          `The hero heading is clipped on the right at ${width}px`,
-        ).toBeLessThanOrEqual(dimensions.viewport + 1);
+        const visibleLines = page.locator(".hero-heading span:visible");
+        expect(await visibleLines.count()).toBeGreaterThan(0);
+        for (const line of await visibleLines.all()) {
+          const bounds = await line.boundingBox();
+          expect(
+            bounds,
+            "Every visible headline line has bounds",
+          ).not.toBeNull();
+          expect(
+            bounds!.x,
+            `The hero heading is clipped on the left at ${width}px`,
+          ).toBeGreaterThanOrEqual(0);
+          expect(
+            bounds!.x + bounds!.width,
+            `The hero heading is clipped on the right at ${width}px`,
+          ).toBeLessThanOrEqual(dimensions.viewport + 1);
+        }
       }
     }
   });

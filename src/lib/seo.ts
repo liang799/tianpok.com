@@ -5,9 +5,9 @@ import type { Project } from "@/data/projects";
 export const site = {
   url: "https://www.tianpok.com",
   name: "Tian Pok",
-  title: "Tian Pok — Developer & Builder of Digital Things",
+  title: "Tian Pok — Software Engineer in Singapore",
   description:
-    "Explore Tian Pok’s portfolio of apps, websites, and experiments in software engineering and product design. Ideas under construction. Always building.",
+    "Tian Pok is a Singapore-based software engineer building practical, purposeful web and mobile products. Explore selected projects, experiments, and product design work.",
   email: "hello@tianpok.com",
   github: "https://github.com/liang799",
 };
@@ -34,7 +34,7 @@ export function pageMetadata({
     ? { ...image, url: absoluteUrl(image.url) }
     : {
         url: absoluteUrl("/share-image"),
-        alt: "Tian Pok — Ideas Under Construction. Developer and builder of digital things.",
+        alt: "Tian Pok — I build software. And I care how it feels. Software engineer in Singapore.",
         width: 1200,
         height: 630,
         type: "image/png",
@@ -67,7 +67,8 @@ const person = {
   "@id": absoluteUrl("/#person"),
   name: site.name,
   url: absoluteUrl("/"),
-  description: "Developer and builder of digital things.",
+  description:
+    "Singapore-based software engineer building web and mobile products.",
   email: site.email,
   sameAs: [site.github],
 };

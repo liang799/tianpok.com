@@ -1,10 +1,10 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const assemblyParts = [
-  "floor-base",
-  "floor-middle",
-  "floor-top",
-  "frame",
+  "foundation",
+  "letter-stem",
+  "letter-cap",
+  "workers",
   "scaffold",
 ] as const;
 
@@ -96,8 +96,114 @@ async function expectOrdinaryFlow(page: Page) {
   expect(trackBounds).not.toBeNull();
   expect(stageBounds).not.toBeNull();
   expect(Math.abs(trackBounds!.height - stageBounds!.height)).toBeLessThan(2);
-  await expectCompletedBuilding(page);
+  const artwork = page.locator(".desktop-construction-fallback img");
+  await expect(artwork).toBeVisible();
+  await expect
+    .poll(() =>
+      artwork.evaluate(
+        (image: HTMLImageElement) => image.complete && image.naturalWidth > 1,
+      ),
+    )
+    .toBe(true);
 }
+
+test("a wheel step moves building pieces through intermediate positions instead of snapping", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/");
+  await expect(page.getByTestId("construction-track")).toHaveAttribute(
+    "data-animated",
+    "true",
+  );
+  await settleHeroLayout(page);
+  await scrollThroughConstruction(page, 0.28);
+  await expectPinnedStage(page);
+  const floor = part(page, "letter-stem");
+  await expect.poll(async () => (await translation(floor)).y).toBeLessThan(-15);
+
+  // Sample actual rendered transforms while a single native wheel step crosses
+  // a floor's assembly range. A direct scroll mapping jumps in one frame.
+  const samples = floor.evaluate(
+    (element) =>
+      new Promise<number[]>((resolve) => {
+        const values: number[] = [];
+        const record = () => {
+          const transform = getComputedStyle(element).transform;
+          values.push(
+            new DOMMatrix(transform === "none" ? undefined : transform).m42,
+          );
+          if (values.length < 75) requestAnimationFrame(record);
+          else resolve(values);
+        };
+        requestAnimationFrame(record);
+      }),
+  );
+  await scrollThroughConstruction(page, 0.6);
+  const positions = await samples;
+  const travel = Math.abs(positions[0]);
+  expect(travel).toBeGreaterThan(15);
+  const intermediate = new Set(
+    positions
+      .filter((y) => y > positions[0] + 1 && y < -1)
+      .map((y) => y.toFixed(1)),
+  );
+  expect(intermediate.size).toBeGreaterThanOrEqual(4);
+  const largestJump = Math.max(
+    ...positions.slice(1).map((y, index) => Math.abs(y - positions[index])),
+  );
+  expect(largestJump).toBeLessThan(travel * 0.7);
+  await expect
+    .poll(async () => Math.abs((await translation(floor)).y))
+    .toBeLessThan(0.5);
+});
+
+test("scroll assembles the podium before the TP letter and finishes with workers", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/");
+  await expect(page.getByTestId("construction-track")).toHaveAttribute(
+    "data-animated",
+    "true",
+  );
+  await settleHeroLayout(page);
+
+  await scrollThroughConstruction(page, 0.25);
+  await expect
+    .poll(() => opacity(part(page, "foundation")))
+    .toBeGreaterThan(0.99);
+  await expect.poll(() => opacity(part(page, "scaffold"))).toBeGreaterThan(0.5);
+  expect(await opacity(part(page, "letter-stem"))).toBe(0);
+  expect(await opacity(part(page, "letter-cap"))).toBe(0);
+
+  await scrollThroughConstruction(page, 0.55);
+  await expect
+    .poll(() => opacity(part(page, "letter-stem")))
+    .toBeGreaterThan(0.99);
+  expect(await opacity(part(page, "letter-cap"))).toBe(0);
+  expect(await opacity(part(page, "workers"))).toBe(0);
+
+  await scrollThroughConstruction(page, 0.84);
+  await expect
+    .poll(() => opacity(part(page, "letter-cap")))
+    .toBeGreaterThan(0.99);
+  await expect.poll(() => opacity(part(page, "workers"))).toBeGreaterThan(0.15);
+  expect(
+    await opacity(page.locator('[data-motion-step="final-artwork"]')),
+  ).toBe(0);
+
+  await scrollThroughConstruction(page, 1);
+  await expectCompletedBuilding(page);
+  await expect
+    .poll(() => opacity(page.locator('[data-motion-step="final-artwork"]')))
+    .toBeGreaterThan(0.99);
+
+  await scrollThroughConstruction(page, 0.25);
+  await expect.poll(() => opacity(part(page, "letter-stem"))).toBe(0);
+  expect(await opacity(part(page, "foundation"))).toBeGreaterThan(0.99);
+  expect(await opacity(part(page, "workers"))).toBe(0);
+});
 
 test("scroll assembles the building in stages and scrolling up reverses it", async ({
   page,
@@ -112,17 +218,17 @@ test("scroll assembles the building in stages and scrolling up reverses it", asy
     page.getByText("Scroll to build", { exact: true }),
   ).toBeVisible();
 
-  const topFloor = part(page, "floor-top");
+  const topFloor = part(page, "letter-cap");
   await expect.poll(() => opacity(topFloor)).toBeLessThan(0.1);
   const initialPosition = await translation(topFloor);
   expect(Math.abs(initialPosition.y)).toBeGreaterThan(10);
 
   await scrollThroughConstruction(page, 0.5);
   await expect
-    .poll(() => opacity(part(page, "floor-base")))
+    .poll(() => opacity(part(page, "foundation")))
     .toBeGreaterThan(0.99);
   await expectPinnedStage(page);
-  await expect(part(page, "floor-base")).toBeInViewport({ ratio: 0.95 });
+  await expect(part(page, "foundation")).toBeInViewport({ ratio: 0.95 });
 
   await scrollThroughConstruction(page, 1);
   await expectCompletedBuilding(page);
@@ -160,20 +266,27 @@ test("the completed scene releases into the portfolio and the CTA can skip it", 
   expect(stageBounds).not.toBeNull();
   await page.mouse.wheel(0, stageBounds!.height + 1);
   await expect(
-    page.getByRole("heading", { name: "Portfolio", exact: true }),
+    page.getByRole("heading", { name: "Featured work", exact: true }),
   ).toBeInViewport();
-  await expect(stage).not.toBeInViewport();
+  // A compact featured-work row can bring the document to its end before the
+  // whole hero leaves the viewport. Its upward travel proves the pin released.
+  await expect
+    .poll(async () => (await stage.boundingBox())!.y - stageBounds!.y)
+    .toBeLessThan(-100);
 
   await page.goto("/");
-  await page.getByRole("link", { name: "View Projects", exact: true }).click();
+  await page
+    .locator("#home")
+    .getByRole("link", { name: "View my work", exact: true })
+    .click();
   await expect(page).toHaveURL("/#projects");
   await expect(
-    page.getByRole("heading", { name: "Portfolio", exact: true }),
+    page.getByRole("heading", { name: "Featured work", exact: true }),
   ).toBeInViewport();
 });
 
 for (const [hash, heading] of [
-  ["projects", "Portfolio"],
+  ["projects", "Featured work"],
   ["about", /Still\s*Building/],
 ] as const) {
   test(`a direct #${hash} link remains at its destination after the scroll track is enabled`, async ({
@@ -197,10 +310,13 @@ test("returning from a project restores the portfolio beyond the construction tr
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/");
-  await page.getByRole("link", { name: "View Projects", exact: true }).click();
+  await page
+    .locator("#home")
+    .getByRole("link", { name: "View my work", exact: true })
+    .click();
   await expect(page).toHaveURL("/#projects");
   await expect(
-    page.getByRole("heading", { name: "Portfolio", exact: true }),
+    page.getByRole("heading", { name: "Featured work", exact: true }),
   ).toBeInViewport();
   await page.getByRole("link", { name: /^Vigour/ }).click();
   await expect(page).toHaveURL("/projects/vigour");
@@ -214,24 +330,24 @@ test("returning from a project restores the portfolio beyond the construction tr
   );
   await settleHeroLayout(page);
   await expect(
-    page.getByRole("heading", { name: "Portfolio", exact: true }),
+    page.getByRole("heading", { name: "Featured work", exact: true }),
   ).toBeInViewport();
 });
 
-test("the building assembles in the mobile viewport without horizontal overflow", async ({
+test("the building assembles in the tablet viewport without horizontal overflow", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 768, height: 1024 });
   await page.goto("/");
   await expect(page.getByTestId("construction-track")).toHaveAttribute(
     "data-animated",
     "true",
   );
-  await expect.poll(() => opacity(part(page, "floor-top"))).toBeLessThan(0.1);
+  await expect.poll(() => opacity(part(page, "letter-cap"))).toBeLessThan(0.1);
 
   await scrollThroughConstruction(page, 0.5);
   await expectPinnedStage(page);
-  await expect(part(page, "floor-base")).toBeInViewport({ ratio: 0.95 });
+  await expect(part(page, "foundation")).toBeInViewport({ ratio: 0.95 });
 
   await scrollThroughConstruction(page, 1);
   await expectCompletedBuilding(page);
@@ -250,7 +366,7 @@ test("the building assembles in the mobile viewport without horizontal overflow"
 test("a short viewport keeps the building in view while construction is pinned", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 390, height: 568 });
+  await page.setViewportSize({ width: 1024, height: 568 });
   await page.goto("/");
   await expect(page.getByTestId("construction-track")).toHaveAttribute(
     "data-animated",
@@ -273,9 +389,12 @@ test("reduced motion presents the completed building with ordinary scrolling", a
   await page.goto("/");
   await expectOrdinaryFlow(page);
   await expect(page.getByText("Scroll to build", { exact: true })).toBeHidden();
-  await page.getByRole("link", { name: "View Projects", exact: true }).click();
+  await page
+    .locator("#home")
+    .getByRole("link", { name: "View my work", exact: true })
+    .click();
   await expect(
-    page.getByRole("heading", { name: "Portfolio", exact: true }),
+    page.getByRole("heading", { name: "Featured work", exact: true }),
   ).toBeInViewport();
 });
 
@@ -291,11 +410,12 @@ test.describe("without JavaScript", () => {
       page.getByText("Scroll to build", { exact: true }),
     ).toBeHidden();
     await page
-      .getByRole("link", { name: "View Projects", exact: true })
+      .locator("#home")
+      .getByRole("link", { name: "View my work", exact: true })
       .click();
     await expect(page).toHaveURL("/#projects");
     await expect(
-      page.getByRole("heading", { name: "Portfolio", exact: true }),
+      page.getByRole("heading", { name: "Featured work", exact: true }),
     ).toBeInViewport();
   });
 });

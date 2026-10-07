@@ -36,27 +36,28 @@ export async function GET() {
       <div
         style={{
           display: "flex",
-          marginTop: 58,
+          marginTop: 40,
           fontSize: 18,
           letterSpacing: "0.2em",
           color: "#d73f19",
         }}
       >
-        {"// BUILDER OF DIGITAL THINGS"}
+        SOFTWARE ENGINEER
       </div>
       <div
         style={{
           display: "flex",
           flexDirection: "column",
           marginTop: 14,
-          fontSize: 78,
+          fontSize: 68,
           fontWeight: 700,
           lineHeight: 1.05,
           letterSpacing: "-0.05em",
         }}
       >
-        <span>IDEAS UNDER</span>
-        <span style={{ color: "#ff5128" }}>CONSTRUCTION.</span>
+        <span>I build software.</span>
+        <span>And I care</span>
+        <span style={{ color: "#ff5128" }}>how it feels.</span>
       </div>
       <div
         style={{
@@ -68,7 +69,7 @@ export async function GET() {
           color: "#60615f",
         }}
       >
-        <span>Software. Design. Always building.</span>
+        <span>Singapore. Software. Always building.</span>
         <span>tianpok.com ↗</span>
       </div>
       <svg

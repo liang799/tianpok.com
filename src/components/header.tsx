@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Brand } from "./brand";
+import { ArrowRight } from "./icons";
 const links = [
   { label: "Home", href: "/#home", section: "home" },
   { label: "Projects", href: "/#projects", section: "projects" },
@@ -67,7 +68,9 @@ export function Header() {
     };
   }, [menuOpen]);
   return (
-    <header className="site-header relative z-30">
+    <header
+      className={`site-header relative z-30 ${pathname === "/" ? "home-header" : ""}`}
+    >
       <div className="site-container flex h-full items-center justify-between">
         <Brand />
         <button
@@ -97,15 +100,25 @@ export function Header() {
               <Link
                 key={link.label}
                 href={link.href}
-                className={active ? "is-active" : ""}
+                className={`${active ? "is-active" : ""} ${link.section === "home" ? "nav-home" : ""}`}
                 aria-current={active ? "location" : undefined}
                 onClick={() => setMenuOpen(false)}
               >
-                {link.label}
+                {link.section === "projects" ? (
+                  <>
+                    <span className="nav-work">Work</span>
+                    <span className="nav-projects">Projects</span>
+                  </>
+                ) : (
+                  link.label
+                )}
               </Link>
             );
           })}
         </nav>
+        <Link href="/#projects" className="header-cta">
+          View my work <ArrowRight />
+        </Link>
       </div>
     </header>
   );

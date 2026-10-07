@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { ArchitectureBackdrop } from "@/components/construction-scene";
 import { ConstructionHero } from "@/components/construction-hero";
-import { ArrowRight } from "@/components/icons";
-import { ProjectCard } from "@/components/project-card";
+import { ArrowRight, ArrowUpRight, GithubIcon } from "@/components/icons";
+import { FeaturedWork } from "@/components/featured-work";
 import { Reveal } from "@/components/reveal";
 import { projects } from "@/data/projects";
 import { StructuredData } from "@/components/structured-data";
@@ -19,50 +19,31 @@ export default function Home() {
     <main id="main-content">
       <StructuredData data={homeStructuredData} />
       <ConstructionHero>
-        <p className="eyebrow hero-enter">{"// Builder of digital things"}</p>
+        <p className="eyebrow hero-enter">Software engineer</p>
         <h1 id="hero-title" className="hero-heading hero-enter">
-          <span>Ideas</span>
-          <span>Under</span>
-          <span className="text-orange">Construction</span>
+          <span>I build software.</span>
+          <span>And I care</span>
+          <span className="text-orange">how it feels.</span>
         </h1>
         <p className="hero-description hero-enter">
-          I’m Tian Pok — a developer who enjoys turning ideas into real, usable
-          products. Currently exploring software engineering, product design,
-          and everything in between.
+          Singapore-based software engineer building web and mobile products
+          that are practical, purposeful, and people-friendly.
         </p>
         <div className="hero-actions hero-enter flex flex-wrap gap-5">
           <Link href="#projects" className="button button-primary">
-            View Projects <ArrowRight />
+            View my work <ArrowRight />
           </Link>
-          <Link href="#about" className="button button-outline">
-            About Me
-          </Link>
+          <a
+            href={site.github}
+            className="button button-outline"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <GithubIcon /> GitHub <ArrowUpRight />
+          </a>
         </div>
       </ConstructionHero>
-      <section
-        id="projects"
-        className="portfolio-section site-container"
-        aria-labelledby="projects-title"
-      >
-        <Reveal className="section-heading flex items-end justify-between gap-6">
-          <div>
-            <p className="eyebrow mb-2">{"// Projects"}</p>
-            <h2 id="projects-title" className="section-title">
-              Portfolio
-            </h2>
-          </div>
-          <Link href="/projects" className="text-link">
-            View all projects <ArrowRight />
-          </Link>
-        </Reveal>
-        <div className="project-grid grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project, index) => (
-            <Reveal key={project.slug} delay={(index % 3) * 70}>
-              <ProjectCard project={project} />
-            </Reveal>
-          ))}
-        </div>
-      </section>
+      <FeaturedWork projects={projects} />
       <section
         id="about"
         className="about-section relative isolate overflow-hidden"

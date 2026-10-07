@@ -14,7 +14,7 @@ const meta = {
       <>
         <Story />
         <main className="min-h-96 p-6">
-          <h1>Ideas under construction</h1>
+          <h1>I build software. And I care how it feels.</h1>
           <p>Explore Tian Pok’s projects.</p>
         </main>
       </>
@@ -32,11 +32,14 @@ export const DesktopHome: Story = {
       canvas.getByRole("navigation", { name: "Main navigation" }),
     );
     await expect(
-      navigation.getByRole("link", { name: "Home" }),
-    ).toHaveAttribute("aria-current", "location");
+      navigation.queryByRole("link", { name: "Home" }),
+    ).not.toBeInTheDocument();
+    const work = navigation.getByRole("link", { name: "Work" });
+    await expect(work).toHaveAttribute("href", "/#projects");
+    await expect(work).not.toHaveAttribute("aria-current");
     await expect(
-      navigation.getByRole("link", { name: "Projects" }),
-    ).not.toHaveAttribute("aria-current");
+      canvas.getByRole("link", { name: "View my work" }),
+    ).toHaveAttribute("href", "/#projects");
     await expect(
       navigation.getByRole("link", { name: "Contact" }),
     ).toHaveAttribute("href", "mailto:hello@tianpok.com");
@@ -53,11 +56,11 @@ export const ProjectPage: Story = {
       canvas.getByRole("navigation", { name: "Main navigation" }),
     );
     await expect(
-      navigation.getByRole("link", { name: "Projects" }),
+      navigation.getByRole("link", { name: "Work" }),
     ).toHaveAttribute("aria-current", "location");
     await expect(
-      navigation.getByRole("link", { name: "Home" }),
-    ).not.toHaveAttribute("aria-current");
+      navigation.queryByRole("link", { name: "Home" }),
+    ).not.toBeInTheDocument();
   },
 };
 

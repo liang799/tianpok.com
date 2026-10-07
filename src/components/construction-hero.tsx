@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  memo,
   useEffect,
   useRef,
   useState,
@@ -8,10 +9,21 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { motion, useMotionValueEvent, useScroll } from "motion/react";
-import ConstructionScene from "./construction-scene";
+import {
+  motion,
+  useMotionValueEvent,
+  useScroll,
+  useSpring,
+} from "motion/react";
+import DesktopConstructionScene from "./desktop-construction-scene";
+import { MobileConstructionArt } from "./mobile-construction-art";
+import Link from "next/link";
+import { ArrowRight } from "./icons";
 
-const motionQuery = "(prefers-reduced-motion: no-preference)";
+const ConstructionArtwork = memo(DesktopConstructionScene);
+
+const motionQuery =
+  "(min-width: 640px) and (prefers-reduced-motion: no-preference)";
 function subscribeToMotionPreference(onChange: () => void) {
   const query = window.matchMedia(motionQuery);
   query.addEventListener("change", onChange);
@@ -44,6 +56,16 @@ export function ConstructionHero({ children }: { children: ReactNode }) {
   const { scrollYProgress } = useScroll({
     target: trackRef,
     offset: [`start ${stickyTop}px`, `end ${size.stage + stickyTop}px`],
+  });
+  // A wheel tick can jump hundreds of pixels. Filter that input once for the
+  // entire scene so every piece stays in sync without a bouncy overshoot.
+  const assemblyProgress = useSpring(scrollYProgress, {
+    stiffness: 220,
+    damping: 32,
+    mass: 0.75,
+    restDelta: 0.0001,
+    restSpeed: 0.0001,
+    skipInitialAnimation: true,
   });
 
   useEffect(() => {
@@ -84,7 +106,7 @@ export function ConstructionHero({ children }: { children: ReactNode }) {
     return () => cancelAnimationFrame(frame);
   }, [animated, size.stage]);
 
-  useMotionValueEvent(scrollYProgress, "change", (progress) => {
+  useMotionValueEvent(assemblyProgress, "change", (progress) => {
     const next =
       progress >= 0.98
         ? 4
@@ -139,52 +161,95 @@ export function ConstructionHero({ children }: { children: ReactNode }) {
                   <span>{phases[phase]}</span>
                 </div>
                 <div className="construction-progress">
-                  <motion.span style={{ scaleX: scrollYProgress }} />
+                  <motion.span style={{ scaleX: assemblyProgress }} />
                 </div>
               </div>
             )}
+            <p className="hero-location" aria-hidden="true">
+              Singapore
+              <br />
+              {"// 2026"}
+            </p>
           </div>
         </div>
         <div className="hero-note hero-note-process" aria-hidden="true">
+          Ideas
+          <br />
           Code
           <br />
-          Design
+          Products
           <br />
-          Build
-          <br />
-          Repeat
+          People
           <span />
         </div>
         <div className="hero-note hero-note-standards" aria-hidden="true">
-          Same
+          Building
           <br />
-          Ideas
+          A brighter
           <br />
-          Higher
+          Digital
           <br />
-          Standards
+          Tomorrow
           <span />
         </div>
-        <div className="hero-art">
-          <ConstructionScene progress={scrollYProgress} animated={animated} />
-        </div>
         <svg
-          className="hero-ground"
-          viewBox="0 0 1440 58"
+          className="hero-skyline-extension"
+          viewBox="0 0 450 270"
           preserveAspectRatio="none"
           aria-hidden="true"
         >
           <path
-            d="M0 40 65 26 130 48 205 31 264 44 335 15 389 43 438 21 485 42 555 29 611 53H1440V58H0Z"
-            fill="#ffdfcf"
-            opacity=".5"
+            fill="#fbe6d7"
+            d="M0 246h20v-25h17v-12h15v61H0Zm43 24V198l27-12 15 8v76Zm42 0v-83h10v-30l26-13 25 12v114Zm55 0V111l26-13 30 12v160Zm52 0V80h9V58h8V38h7v20h9v22h12v190Zm49 0v-99h15v-40h18v-30l26-9 25 11v167Zm80 0V94l28-14 19 13v177Zm41 0V15l28-14 25 17v252Z"
           />
           <path
-            d="m0 50 78-7 46 10 90-35 74 32 60-10 62 12 71-28 84 29 62-11 65 12h748v4H0Z"
-            fill="#f4d7c6"
-            opacity=".65"
+            fill="#ffd9c0"
+            opacity=".7"
+            d="M12 270v-23h32v23Zm29 0v-38l21-8 18 7v39Zm37 0v-68h30v68Zm29 0v-91l22-9 17 9v91Zm48 0V148l25-9 23 12v119Zm49 0v-62h34v62Zm48 0V90l29-15 25 15v180Zm62 0v-105h29v105Zm33 0V119l26-8 34 15v144Z"
           />
         </svg>
+        <div className="hero-art" aria-hidden="true">
+          {animated ? (
+            <ConstructionArtwork progress={assemblyProgress} animated />
+          ) : (
+            <picture className="desktop-construction-fallback">
+              <source
+                media="(min-width: 640px)"
+                srcSet="/images/desktop-construction.webp"
+              />
+              {/* A media source avoids downloading desktop artwork on phones. */}
+              <img
+                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'/%3E"
+                alt=""
+                width={1536}
+                height={1024}
+                fetchPriority="high"
+              />
+            </picture>
+          )}
+        </div>
+        <svg
+          className="hero-outbuilding"
+          viewBox="0 0 210 255"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <path fill="#aaa49e" d="M88 95V12l45-18 33 21v98Z" />
+          <path fill="#393a37" d="m1 43 154-31 55 28v215H1Z" />
+          <path fill="#242725" d="m1 43 154-31v243H1Z" />
+          <path fill="#30332f" d="m155 12 55 28v215h-55Z" />
+          <path
+            d="M177 36v205m-11-213v46m28-32v193M166 52l28-10M166 73l28-11"
+            stroke="#55584e"
+            strokeWidth="2"
+            fill="none"
+          />
+          <path d="M0 240h210" stroke="#ff642a" strokeWidth="1" />
+        </svg>
+        <MobileConstructionArt />
+        <Link href="#projects" className="mobile-hero-cta">
+          View my work <ArrowRight />
+        </Link>
       </section>
     </div>
   );
