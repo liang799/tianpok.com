@@ -145,7 +145,7 @@ export const ScrollAssembly: Story = {
 };
 
 // Keep the published story identifier while showing the completed scene used
-// for reduced motion. Its inline SVG fallback remains available without WebGL.
+// on arrival and for reduced motion. The inline SVG remains a WebGL fallback.
 export const StaticFallback: Story = {
   render: () => <AssemblyPreview animated={false} />,
   play: async ({ canvasElement }) => {

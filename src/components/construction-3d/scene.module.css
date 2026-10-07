@@ -20,6 +20,27 @@
 .canvas canvas {
   display: block;
 }
+.siteLabel {
+  display: none;
+  position: absolute;
+  z-index: 1;
+  color: #e2dfd8;
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  line-height: 1.8;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.scene[data-overview="true"][data-renderer="webgl"] .siteLabel {
+  display: block;
+}
+.siteLabel span {
+  display: block;
+  width: 1.8em;
+  height: 2px;
+  margin-top: 1.5em;
+  background: #ff642b;
+}
 .scene[data-theme="dark"] .fallback {
   opacity: 0.85;
 }

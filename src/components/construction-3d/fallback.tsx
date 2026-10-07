@@ -14,12 +14,13 @@ function Block({
   y,
   width,
   height,
-  depth = 24,
-  color = "#f0632e",
-  side = "#c84622",
-  top = "#ff9259",
+  depth = -38,
+  color = "#fff0dc",
+  side = "#ec622b",
+  top = "#fff7eb",
 }: BlockProps) {
-  const rise = depth * 0.46;
+  const rise = Math.abs(depth) * 0.46;
+  const edge = depth < 0 ? x : x + width;
   return (
     <g>
       <path
@@ -27,7 +28,7 @@ function Block({
         fill={top}
       />
       <path
-        d={`M${x + width} ${y}l${depth} ${-rise}v${height}l${-depth} ${rise}Z`}
+        d={`M${edge} ${y}l${depth} ${-rise}v${height}l${-depth} ${rise}Z`}
         fill={side}
       />
       <rect x={x} y={y} width={width} height={height} fill={color} />
@@ -35,7 +36,108 @@ function Block({
   );
 }
 
-/** Inline vector architecture remains available before WebGL is ready. */
+function Crane({ small = false }: { small?: boolean }) {
+  return (
+    <g>
+      <g fill="none" stroke="#e9662d" strokeLinejoin="round">
+        <path d="M0 0v-485h22V0M0-485l11-70 11 70" strokeWidth="4" />
+        {Array.from({ length: 14 }, (_, i) => (
+          <path
+            key={i}
+            d={`M0 ${-477 + i * 34}h22L0 ${-443 + i * 34}h22Z`}
+            strokeWidth="2.3"
+          />
+        ))}
+        <path
+          d="M-338-485h480v20h-480Zm0 0 12-14h456l12 14M11-555l-293 56m293-56 120 56"
+          strokeWidth="3.5"
+        />
+        {Array.from({ length: 17 }, (_, i) => (
+          <path
+            key={i}
+            d={`M${-335 + i * 28} -484l14 19 14-19`}
+            strokeWidth="2"
+          />
+        ))}
+      </g>
+      <Block
+        x={115}
+        y={-481}
+        width={39}
+        height={33}
+        depth={10}
+        color="#ef702f"
+        side="#cb5023"
+        top="#ffac73"
+      />
+      <Block
+        x={-14}
+        y={-454}
+        width={34}
+        height={36}
+        depth={11}
+        color="#f18748"
+        side="#d95828"
+        top="#ffad6e"
+      />
+      <path d="M-9-448h23v19H-9Z" fill="#555d52" />
+      <g transform={small ? undefined : "translate(38 0)"}>
+        <path
+          d="M-178-465v83m9-83v83"
+          fill="none"
+          stroke="#535a51"
+          strokeWidth="2"
+        />
+        <rect x={-183} y={-386} width={20} height={14} rx="3" fill="#e96b2f" />
+        <path
+          d="M-173-372v7c0 6 8 6 8 0"
+          fill="none"
+          stroke="#424a41"
+          strokeWidth="3"
+        />
+        {!small && (
+          <>
+            <path
+              d="m-169-361-24 23m24-23 29 23"
+              fill="none"
+              stroke="#57594b"
+              strokeWidth="2"
+            />
+            <Block
+              x={-188}
+              y={-334}
+              width={47}
+              height={42}
+              depth={-18}
+              color="#ffb084"
+              side="#e76028"
+              top="#ffcdac"
+            />
+          </>
+        )}
+      </g>
+    </g>
+  );
+}
+
+function Worker({ x, y }: { x: number; y: number }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <path
+        d="m-4 14-3 25m8-25 4 25M-6-1l-5 18m14-18 8 10 5-7"
+        fill="none"
+        stroke="#353e36"
+        strokeWidth="4"
+        strokeLinecap="round"
+      />
+      <path d="M-6-3h10l2 18H-8Z" fill="#3b443b" />
+      <circle cy="-10" r="4.5" fill="#b98b68" />
+      <path d="M-6-12c0-8 12-8 12 0Z" fill="#f17b37" />
+    </g>
+  );
+}
+
+/** Vector architecture keeps the completed reference composition visible without WebGL. */
 export function ConstructionFallback() {
   return (
     <svg
@@ -47,18 +149,18 @@ export function ConstructionFallback() {
       aria-hidden="true"
       focusable="false"
     >
-      <g opacity="0.58">
+      <g opacity="0.64">
         {[
-          [116, 393, 39, 183],
-          [177, 354, 31, 228],
-          [229, 414, 42, 182],
-          [290, 321, 37, 279],
-          [357, 383, 45, 230],
-          [431, 281, 45, 335],
-          [503, 361, 40, 240],
-          [557, 397, 31, 207],
-          [759, 329, 45, 266],
-          [819, 407, 26, 177],
+          [45, 492, 35, 169],
+          [106, 411, 32, 249],
+          [162, 464, 39, 196],
+          [227, 357, 35, 303],
+          [288, 445, 44, 215],
+          [347, 322, 47, 338],
+          [428, 407, 35, 253],
+          [495, 457, 32, 203],
+          [787, 371, 40, 289],
+          [852, 319, 35, 341],
         ].map(([x, y, width, height], index) => (
           <g key={x}>
             <Block
@@ -66,191 +168,170 @@ export function ConstructionFallback() {
               y={y}
               width={width}
               height={height}
-              depth={16}
-              color={index % 3 === 0 ? "#eadbd0" : "#f2dfcd"}
-              side="#e6d6c8"
-              top="#f6e8dc"
+              depth={-17}
+              color={index % 3 === 0 ? "#e7d9cd" : "#f5d9c0"}
+              side="#ead0b8"
+              top="#f6e6d9"
             />
             {index % 3 === 0 && (
               <path
-                d={`M${x + width / 2} ${y}v-21`}
-                stroke="#decfc2"
+                d={`M${x + width / 2} ${y}v-18`}
+                stroke="#ddcdbd"
                 strokeWidth="2"
               />
             )}
           </g>
         ))}
       </g>
-
       <path
-        d="M118 593 441 499 846 581 520 686Z"
-        fill="#e9e3d9"
-        opacity="0.6"
+        d="M74 396c7-11 14-10 21-10 6-20 28-20 37 0 9-1 14 2 21 10ZM778 269c9-11 18-12 27-11 10-31 48-30 59 0 14-1 22 3 31 11Z"
+        fill="#f8e4d3"
+        opacity="0.8"
       />
-      <path d="M203 587 504 503 807 570 507 662Z" fill="#eeebe4" />
-      <path d="M203 587 507 654 807 562v15l-300 93-304-69Z" fill="#d8d6cc" />
-      <path d="M203 587 504 495 807 562 507 654Z" fill="#f5f0e7" />
+
+      <g transform="translate(224 665) scale(.49)">
+        <Crane small />
+      </g>
+      <g transform="translate(719 637)">
+        <Crane />
+      </g>
+      <Block
+        x={50}
+        y={612}
+        width={82}
+        height={46}
+        depth={23}
+        color="#484a40"
+        side="#32392f"
+        top="#65675b"
+      />
+      <Block
+        x={112}
+        y={574}
+        width={72}
+        height={84}
+        depth={25}
+        color="#393e36"
+        side="#292f2a"
+        top="#5e6558"
+      />
+      <Block
+        x={254}
+        y={578}
+        width={76}
+        height={80}
+        depth={-32}
+        color="#eb733a"
+        side="#41433a"
+        top="#f19150"
+      />
+      <Block
+        x={784}
+        y={479}
+        width={105}
+        height={179}
+        depth={-39}
+        color="#30352f"
+        side="#484d41"
+        top="#5b6053"
+      />
+      <Block
+        x={758}
+        y={438}
+        width={63}
+        height={58}
+        depth={-28}
+        color="#575b4e"
+        side="#6b6b5b"
+        top="#868273"
+      />
+
+      <Block
+        x={365}
+        y={548}
+        width={194}
+        height={110}
+        depth={-48}
+        color="#30372f"
+        side="#40463b"
+        top="#525b4c"
+      />
+      <Block
+        x={560}
+        y={594}
+        width={127}
+        height={64}
+        depth={-32}
+        color="#353b31"
+        side="#454a3d"
+        top="#5b6450"
+      />
+
+      <Block x={403} y={374} width={66} height={174} depth={-51} />
+      <Block x={535} y={376} width={61} height={218} depth={-46} />
+      <Block x={596} y={376} width={88} height={43} depth={-46} />
+      <Block x={653} y={419} width={31} height={65} depth={-46} />
+      <Block x={596} y={464} width={88} height={42} depth={-46} />
+      <Block x={324} y={331} width={208} height={43} depth={-51} />
       <path
-        d="m251 574 303 67m-240-85 302 67m-232-88 296 67m-218-90 281 65M303 609l299-94m-231 109 301-94m-230 110 300-94"
+        d="M405 433h64m-64 62h64m66-24h61m-61 66h61M430 332v42m103 2v130"
         fill="none"
-        stroke="#ddd9d0"
+        stroke="#d5c5b0"
+        strokeOpacity=".42"
+        strokeWidth="1"
+      />
+      <path
+        d="M352 415h51m-51 63h51m86-61h46m-46 62h46"
+        fill="none"
+        stroke="#ba5129"
+        strokeOpacity=".45"
         strokeWidth="1"
       />
 
-      <Block
-        x={344}
-        y={541}
-        width={244}
-        height={31}
-        depth={63}
-        color="#3e4541"
-        side="#2a302d"
-        top="#626b63"
-      />
-      <Block
-        x={384}
-        y={389}
-        width={49}
-        height={153}
-        depth={40}
-        color="#343c37"
-        side="#272f2b"
-        top="#647065"
-      />
-      <Block
-        x={470}
-        y={397}
-        width={49}
-        height={145}
-        depth={40}
-        color="#e0d8c8"
-        side="#b9b7aa"
-        top="#f1e9da"
-      />
-      <Block x={519} y={398} width={63} height={26} depth={40} />
-      <Block
-        x={554}
-        y={424}
-        width={28}
-        height={54}
-        depth={40}
-        color="#e0d8c8"
-        side="#b9b7aa"
-        top="#f1e9da"
-      />
-      <Block
-        x={519}
-        y={455}
-        width={63}
-        height={27}
-        depth={40}
-        color="#e0d8c8"
-        side="#b9b7aa"
-        top="#f1e9da"
-      />
-      <rect x={470} y={503} width={49} height={39} fill="#ed5728" />
-      <Block x={331} y={353} width={143} height={39} depth={40} />
-      <path
-        d="M394 407v123m17-123v123m69-135v135m19-135v135M339 363h126"
-        fill="none"
-        stroke="#ffffff"
-        strokeOpacity="0.12"
-        strokeWidth="2"
-      />
-
-      <g fill="none" stroke="#666e66" strokeWidth="2.2">
-        <path d="M291 570V417m-25 161V431m42 133V411m-56 31 70-23m-70 80 70-23m-70 80 70-23M266 431l25 86-25 61m25-161-25 81 25 72" />
-        <path d="m257 448 70-23m-70 82 70-23m-70 83 70-23" strokeWidth="5" />
-      </g>
-
-      <Block
-        x={646}
-        y={579}
-        width={67}
-        height={24}
-        depth={28}
-        color="#a9aaa0"
-        side="#83897d"
-        top="#d6d5c9"
-      />
-      <g fill="none" stroke="#e9632d" strokeLinejoin="round">
+      <g fill="none" stroke="#4a5145" strokeWidth="3">
+        <path d="M319 658V526m44 132V513m70 145V518m118 140V540m57 118V580m76 78V376m29 282V370M319 526l44 132m0-145-44 145m44-94 70 94m0-140-70 140m188-118 57 118m0-78-57 78M684 376l29 94-29 86 29 102m0-288-29 99 29 91-29 98" />
         <path
-          d="M663 584V160h25v424M663 160l25-64 9 64m-22-33v-32"
+          d="m311 538 53-18 195 37m-245 39 51-18 193 36m-2-9 134 25M676 391l43-15m-43 95 43-15m-43 100 43-15"
           strokeWidth="5"
         />
-        {Array.from({ length: 12 }, (_, i) => (
-          <path
-            key={i}
-            d={`M663 ${168 + i * 34}h25l-25 34h25Z`}
-            strokeWidth="2.5"
-          />
-        ))}
         <path
-          d="M247 158h535v22H247Zm0 0 23-22h499l13 22M270 136l-23 44m450-84-375 40m375-40 81 40"
-          strokeWidth="4"
+          d="M363 546v-42m69 56v-42m63 53v-41m57 52v-42m-194-13 198 37M684 376v-23m29 17v-23m-34 10 40-6"
+          strokeWidth="2"
         />
-        {Array.from({ length: 18 }, (_, i) => (
-          <path
-            key={i}
-            d={`M${250 + i * 29} 159l14 21 15-21`}
-            strokeWidth="2.2"
-          />
-        ))}
       </g>
-      <Block
-        x={741}
-        y={158}
-        width={52}
-        height={41}
-        depth={11}
-        color="#e7602e"
-        side="#c84a23"
-        top="#fc8c50"
-      />
-      <Block
-        x={641}
-        y={189}
-        width={35}
-        height={38}
-        depth={13}
-        color="#f48647"
-        side="#d45229"
-        top="#ffae68"
-      />
-      <path d="M648 196h21v17h-21Z" fill="#454d46" />
-      <path d="M335 180v128m9-128v128" stroke="#4a514a" strokeWidth="2" />
-      <rect x="330" y="304" width="19" height="15" rx="3" fill="#e5672c" />
-      <path
-        d="M339 319v7c0 8 10 9 10 1"
-        fill="none"
-        stroke="#3d443e"
-        strokeWidth="3"
-      />
 
-      <Block x={207} y={549} width={32} height={28} depth={18} />
+      <Worker x={391} y={495} />
+      <Worker x={548} y={518} />
+      <Worker x={634} y={327} />
+      <Worker x={754} y={616} />
       <Block
-        x={228}
-        y={582}
+        x={294}
+        y={633}
         width={37}
-        height={22}
-        depth={22}
-        color="#b9b8ab"
-        side="#969b8f"
-        top="#d9d7cc"
+        height={25}
+        depth={-14}
+        color="#b7b8a5"
+        side="#909a85"
+        top="#d2d2bd"
       />
-      <Block x={732} y={576} width={32} height={29} depth={19} />
-      <g transform="translate(616 546)">
-        <path
-          d="m-5 15-4 28m10-28 4 28m-10-41-4 18m10-18 10 12"
-          fill="none"
-          stroke="#303a33"
-          strokeWidth="5"
-          strokeLinecap="round"
-        />
-        <path d="M-7-2h11l3 19H-9Z" fill="#ed7634" />
-        <circle cy="-10" r="5" fill="#b78e6e" />
-        <path d="M-7-12c0-10 13-10 13 0Z" fill="#ef7430" />
-      </g>
+      <Block
+        x={699}
+        y={632}
+        width={38}
+        height={26}
+        depth={-16}
+        color="#eb7135"
+        side="#b84f28"
+        top="#fda264"
+      />
+      <path d="M0 659 900 650v27H0Z" fill="#30352f" />
+      <path
+        d="m0 659 900-9m-208 3v24m64-24v24m64-25v25m60-26v26"
+        fill="none"
+        stroke="#cb6e3e"
+        strokeWidth="1"
+        opacity=".8"
+      />
     </svg>
   );
 }

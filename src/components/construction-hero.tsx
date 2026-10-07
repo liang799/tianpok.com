@@ -4,6 +4,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -54,6 +55,10 @@ export function ConstructionHero({ children }: { children: ReactNode }) {
   );
   const [size, setSize] = useState({ stage: 0, viewport: 0 });
   const [phase, setPhase] = useState("Scroll to build");
+  const [replaying, setReplaying] = useState(false);
+  const replayLayout = useRef<
+    { mode: "start" } | { mode: "exit"; stageTop: number } | null
+  >(null);
   const initialAnchor = useRef({
     hash: "",
     static: false,
@@ -61,17 +66,89 @@ export function ConstructionHero({ children }: { children: ReactNode }) {
     cancelled: false,
   });
   const stickyTop = Math.min(0, size.viewport - size.stage);
-  const animated =
+  const replayAvailable =
     !isMobile && !reducedMotion && renderer === "webgl" && size.stage > 0;
+  const animated = replayAvailable && replaying;
   const { scrollYProgress } = useScroll({
     target: trackRef,
     offset: [`start ${stickyTop}px`, `end ${size.stage + stickyTop}px`],
   });
   const assemblyProgress = useSpring(scrollYProgress, constructionSpring);
   const onRendererChange = useCallback(
-    (next: "loading" | "webgl" | "fallback") => setRenderer(next),
+    (next: "loading" | "webgl" | "fallback") => {
+      setRenderer(next);
+      if (next !== "webgl") {
+        replayLayout.current = null;
+        setReplaying(false);
+      }
+    },
     [],
   );
+
+  useEffect(() => {
+    const mobile = window.matchMedia(mobileQuery);
+    const reduced = window.matchMedia(reducedQuery);
+    const cancelReplay = () => {
+      if (!mobile.matches && !reduced.matches) return;
+      replayLayout.current = null;
+      setReplaying(false);
+    };
+    mobile.addEventListener("change", cancelReplay);
+    reduced.addEventListener("change", cancelReplay);
+    return () => {
+      mobile.removeEventListener("change", cancelReplay);
+      reduced.removeEventListener("change", cancelReplay);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const adjustment = replayLayout.current;
+    if (!adjustment) return;
+    const align = () => {
+      const track = trackRef.current;
+      const stage = stageRef.current;
+      if (!track || !stage) return;
+      const stageHeight = stage.getBoundingClientRect().height;
+      const stageTop =
+        adjustment.mode === "start"
+          ? Math.min(0, window.innerHeight - stageHeight)
+          : adjustment.stageTop;
+      window.scrollTo({
+        top: window.scrollY + track.getBoundingClientRect().top - stageTop,
+        behavior: "instant",
+      });
+      if (adjustment.mode === "start") {
+        // The spring may otherwise retain velocity from ordinary page scroll.
+        scrollYProgress.jump(0);
+        assemblyProgress.jump(0);
+      }
+    };
+    align();
+    // ResizeObserver updates the expanded stage height and scroll offsets in
+    // the same frame. Align again against those settled dimensions.
+    const frame = requestAnimationFrame(() => {
+      align();
+      replayLayout.current = null;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [animated, assemblyProgress, scrollYProgress]);
+
+  function toggleReplay() {
+    initialAnchor.current.cancelled = true;
+    if (animated) {
+      replayLayout.current = {
+        mode: "exit",
+        stageTop: stageRef.current?.getBoundingClientRect().top ?? 0,
+      };
+      setReplaying(false);
+      return;
+    }
+    replayLayout.current = { mode: "start" };
+    scrollYProgress.jump(0);
+    assemblyProgress.jump(0);
+    setPhase("Scroll to build");
+    setReplaying(true);
+  }
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -194,6 +271,17 @@ export function ConstructionHero({ children }: { children: ReactNode }) {
         <div className="site-container relative z-10">
           <div className="hero-copy">
             {children}
+            {replayAvailable && (
+              <button
+                type="button"
+                className={`construction-replay-control${animated ? " construction-replay-exit" : ""}`}
+                aria-pressed={animated}
+                onClick={toggleReplay}
+              >
+                <span aria-hidden="true">{animated ? "×" : "↻"}</span>
+                {animated ? "Exit replay" : "Replay the build"}
+              </button>
+            )}
             {animated && (
               <div className="construction-cue" aria-hidden="true">
                 <div className="construction-cue-label">
@@ -233,6 +321,7 @@ export function ConstructionHero({ children }: { children: ReactNode }) {
             <ConstructionArtwork
               progress={assemblyProgress}
               animated={animated}
+              overview={!animated}
               onRendererChange={onRendererChange}
             />
           )}

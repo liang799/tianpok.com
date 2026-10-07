@@ -20,13 +20,18 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
     await page.evaluate(() => document.fonts.ready);
     await expect(page.getByTestId("construction-track")).toHaveAttribute(
       "data-animated",
-      String(reducedMotion === "no-preference"),
+      "false",
     );
 
     const scene = page.getByTestId("desktop-construction-scene");
     await expect(scene).toHaveAttribute("data-renderer", "webgl", {
       timeout: 20_000,
     });
+    await expect(scene).toHaveAttribute("data-phase", "completed");
+    await expect(scene).toHaveAttribute(
+      "data-placed-count",
+      String(CONSTRUCTION_PIECES.length),
+    );
     await expect(page.locator(".hero-art img, .hero-art image")).toHaveCount(0);
     const canvas = scene.locator("canvas");
     await expect(canvas).toBeVisible();
@@ -42,6 +47,14 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
     ).toBe(true);
 
     if (reducedMotion === "no-preference") {
+      await page.getByRole("button", { name: "Replay the build" }).click();
+      await expect(page.getByTestId("construction-track")).toHaveAttribute(
+        "data-animated",
+        "true",
+      );
+      await expect
+        .poll(async () => Number(await scene.getAttribute("data-progress")))
+        .toBeLessThan(0.001);
       const index = CONSTRUCTION_PIECES.length - 1;
       const progress = (index + 0.59) / CONSTRUCTION_PIECES.length;
       const track = await page.getByTestId("construction-track").boundingBox();
@@ -118,27 +131,62 @@ for (const width of [640, 768, 1260, 1440, 1536, 1632]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
     await page.evaluate(() => document.fonts.ready);
-    const cue = page.locator(".construction-cue");
-    await expect(cue).toBeVisible();
+    const control = page.getByRole("button", {
+      name: "Replay the build",
+      exact: true,
+    });
+    await expect(control).toBeVisible();
     const description = await page.locator(".hero-description").boundingBox();
-    const cueBounds = await cue.boundingBox();
-    expect(cueBounds!.x).toBeCloseTo(description!.x, 0);
+    const controlBounds = await control.boundingBox();
+    expect(controlBounds!.x).toBeCloseTo(description!.x, 0);
     const location = await page.locator(".hero-location").boundingBox();
     const actions = await page.locator(".hero-actions").boundingBox();
     expect(actions!.y + actions!.height).toBeLessThan(location!.y);
-    expect(location!.y + location!.height + 12).toBeLessThan(cueBounds!.y);
+    expect(location!.y + location!.height + 12).toBeLessThanOrEqual(
+      controlBounds!.y,
+    );
 
     const stage = await page.getByTestId("construction-stage").boundingBox();
     for (const selector of [
       ".hero-actions",
       ".hero-location",
-      ".construction-cue",
+      ".construction-replay-control",
     ]) {
       const detail = await page.locator(selector).boundingBox();
       expect(
         detail!.y + detail!.height,
         `${selector} must fit inside the hero`,
       ).toBeLessThan(stage!.y + stage!.height);
+    }
+
+    await control.click();
+    const cue = page.locator(".construction-cue");
+    await expect(cue).toBeVisible();
+    const cueBounds = await cue.boundingBox();
+    const replayDescription = await page
+      .locator(".hero-description")
+      .boundingBox();
+    const replayLocation = await page.locator(".hero-location").boundingBox();
+    const replayActions = await page.locator(".hero-actions").boundingBox();
+    const replayStage = await page
+      .getByTestId("construction-stage")
+      .boundingBox();
+    expect(cueBounds!.x).toBeCloseTo(replayDescription!.x, 0);
+    expect(replayActions!.y + replayActions!.height).toBeLessThan(
+      replayLocation!.y,
+    );
+    expect(replayLocation!.y + replayLocation!.height + 12).toBeLessThan(
+      cueBounds!.y,
+    );
+    for (const selector of [
+      ".construction-cue",
+      ".construction-replay-control",
+    ]) {
+      const detail = await page.locator(selector).boundingBox();
+      expect(
+        detail!.y + detail!.height,
+        `${selector} must fit inside the hero during replay`,
+      ).toBeLessThan(replayStage!.y + replayStage!.height);
     }
   });
 }

@@ -253,6 +253,35 @@ test("completed structural faces meet exactly without overlapping volumes", () =
   }
 });
 
+test("wider staged pieces and their pallets remain separated within crane reach", () => {
+  for (let a = 0; a < count; a++) {
+    const first = CONSTRUCTION_PIECES[a];
+    for (const position of [first.pickup, first.placement]) {
+      expect(
+        Math.hypot(position[0] - CRANE_BASE[0], position[2] - CRANE_BASE[2]),
+        `${first.id} must remain inside the working jib`,
+      ).toBeLessThan(8.4);
+    }
+    for (let b = a + 1; b < count; b++) {
+      const second = CONSTRUCTION_PIECES[b];
+      // The modeled pallet extends 0.09 across X and 0.08 across Z beyond
+      // each piece. At least one horizontal axis must leave a clear gap.
+      const gapX =
+        Math.abs(first.pickup[0] - second.pickup[0]) -
+        (first.size[0] + second.size[0]) / 2 -
+        0.09;
+      const gapZ =
+        Math.abs(first.pickup[2] - second.pickup[2]) -
+        (first.size[2] + second.size[2]) / 2 -
+        0.08;
+      expect(
+        Math.max(gapX, gapZ),
+        `${first.id} and ${second.id} staging pallets must not overlap`,
+      ).toBeGreaterThan(0.019);
+    }
+  }
+});
+
 test("reverse seeks reproduce every prefab and crane pose without retained state", () => {
   const progress = Array.from({ length: 801 }, (_, i) => i / 800);
   const forward = progress.map(sampleCrane);

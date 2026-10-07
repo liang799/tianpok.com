@@ -16,6 +16,9 @@ async function expectMobileHero(page: Page, { hydrated = true } = {}) {
     await expect(page.getByTestId("desktop-construction-scene")).toHaveCount(0);
   }
   await expect(page.locator(".hero-art canvas")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Replay the build" }),
+  ).toBeHidden();
   await expect(image).toBeVisible();
   await expect
     .poll(() =>

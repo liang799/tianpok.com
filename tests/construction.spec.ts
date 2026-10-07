@@ -109,16 +109,78 @@ async function settleHeroLayout(page: Page) {
 
 async function expectOrdinaryFlow(page: Page) {
   const track = page.getByTestId("construction-track");
-  const stage = page.getByTestId("construction-stage");
   await expect(track).toHaveAttribute("data-animated", "false");
-  const trackBounds = await track.boundingBox();
-  const stageBounds = await stage.boundingBox();
-  expect(trackBounds).not.toBeNull();
-  expect(stageBounds).not.toBeNull();
-  expect(Math.abs(trackBounds!.height - stageBounds!.height)).toBeLessThan(2);
+  // Read both boxes in one frame: a media change can settle between separate
+  // browser calls while ResizeObserver updates the measured track height.
+  await expect
+    .poll(() =>
+      track.evaluate((element) => {
+        const stage = element.querySelector<HTMLElement>(
+          '[data-testid="construction-stage"]',
+        );
+        return Math.abs(
+          element.getBoundingClientRect().height -
+            (stage?.getBoundingClientRect().height ?? Infinity),
+        );
+      }),
+    )
+    .toBeLessThan(2);
   await expect(scene(page)).toBeVisible();
   await expect(scene(page).locator("img, image")).toHaveCount(0);
 }
+
+async function startReplay(page: Page) {
+  await page
+    .getByRole("button", { name: "Replay the build", exact: true })
+    .click();
+  await expect(page.getByTestId("construction-track")).toHaveAttribute(
+    "data-animated",
+    "true",
+  );
+  await expectProgress(page, 0);
+  await expect(scene(page)).toHaveAttribute("data-placed-count", "0");
+  await expect(
+    page.getByRole("button", { name: "Exit replay", exact: true }),
+  ).toBeVisible();
+  await settleHeroLayout(page);
+}
+
+test("the completed building is the first frame and replay is an explicit, reversible choice", async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await expectWebGLScene(page);
+  await expectOrdinaryFlow(page);
+  await expectCompletedBuilding(page);
+  await settleHeroLayout(page);
+  await expect(page.getByText("Scroll to build", { exact: true })).toBeHidden();
+  await page.getByTestId("construction-stage").screenshot({
+    path: testInfo.outputPath("hero-completed-first.png"),
+    animations: "disabled",
+  });
+  await page.mouse.wheel(0, 100);
+  await expectCompletedBuilding(page);
+  await expectOrdinaryFlow(page);
+
+  await startReplay(page);
+  await scrollThroughConstruction(page, liftProgress(3, 0.59));
+  await expectLift(page, 3, 0.59);
+  await expect(scene(page)).toHaveAttribute("data-placed-count", "3");
+  const stage = page.getByTestId("construction-stage");
+  const replayTop = (await stage.boundingBox())!.y;
+  await page.getByRole("button", { name: "Exit replay", exact: true }).click();
+  await expectOrdinaryFlow(page);
+  await expectCompletedBuilding(page);
+  await expect(
+    page.getByRole("button", { name: "Replay the build", exact: true }),
+  ).toBeFocused();
+  await expect
+    .poll(async () => Math.abs((await stage.boundingBox())!.y - replayTop))
+    .toBeLessThan(2);
+  await startReplay(page);
+  await expect(scene(page)).toHaveAttribute("data-phase", "approach");
+});
 
 test("a wheel step renders intermediate crane frames instead of snapping", async ({
   page,
@@ -127,6 +189,7 @@ test("a wheel step renders intermediate crane frames instead of snapping", async
   await page.goto("/");
   await expectWebGLScene(page);
   await settleHeroLayout(page);
+  await startReplay(page);
   await scrollThroughConstruction(page, 0.28);
   await expectProgress(page, 0.28);
   await expectPinnedStage(page);
@@ -167,6 +230,7 @@ test("the crane picks up, carries, seats, and releases the first piece before co
   await page.goto("/");
   await expectWebGLScene(page);
   await settleHeroLayout(page);
+  await startReplay(page);
   await expect(scene(page)).toHaveAttribute("data-attached", "false");
   await expect(scene(page)).toHaveAttribute("data-placed", "false");
   await expect(scene(page)).toHaveAttribute("data-placed-count", "0");
@@ -250,6 +314,7 @@ test("all eight staged pieces are placed in order and reversing a cycle returns 
   await page.goto("/");
   await expectWebGLScene(page);
   await settleHeroLayout(page);
+  await startReplay(page);
   await expect(scene(page)).toHaveAttribute("data-placed-count", "0");
   const stage = page.getByTestId("construction-stage");
   await stage.screenshot({
@@ -319,6 +384,7 @@ test("the completed scene releases into the portfolio and the CTA can skip it", 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/");
   await expectWebGLScene(page);
+  await startReplay(page);
   await scrollThroughConstruction(page, 1);
   await expectCompletedBuilding(page);
   await expectPinnedStage(page);
@@ -374,7 +440,7 @@ test("manually leaving a section anchor is not undone when the lazy scene loads 
   await expectWebGLScene(page);
   await expect(page.getByTestId("construction-track")).toHaveAttribute(
     "data-animated",
-    "true",
+    "false",
   );
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(2);
   await page.setViewportSize({ width: 1536, height: 900 });
@@ -404,6 +470,7 @@ test("returning from a project restores the portfolio beyond the construction tr
   await page.goto("/");
   await expectWebGLScene(page);
   await settleHeroLayout(page);
+  await startReplay(page);
   await page
     .locator("#home")
     .getByRole("link", { name: "View my work", exact: true })
@@ -448,6 +515,7 @@ test("the crane builds in a tablet viewport without horizontal overflow", async 
   await page.setViewportSize({ width: 768, height: 1024 });
   await page.goto("/");
   await expectWebGLScene(page);
+  await startReplay(page);
   await scrollThroughConstruction(page, 0.5);
   await expectProgress(page, 0.5);
   await expectPinnedStage(page);
@@ -470,6 +538,7 @@ test("a short viewport keeps the scene in view while construction is pinned", as
   await page.setViewportSize({ width: 1024, height: 568 });
   await page.goto("/");
   await expectWebGLScene(page);
+  await startReplay(page);
   await scrollThroughConstruction(page, 1);
   await expectCompletedBuilding(page);
   await expectPinnedStage(page);
@@ -489,7 +558,7 @@ test("reduced motion renders the completed 3D scene with ordinary scrolling", as
   await expectCompletedBuilding(page);
   await expect(page.getByText("Scroll to build", { exact: true })).toBeHidden();
   await expect(
-    page.getByRole("button", { name: "Replay construction" }),
+    page.getByRole("button", { name: "Replay the build" }),
   ).toBeHidden();
   await page.mouse.wheel(0, 100);
   await expectCompletedBuilding(page);
@@ -501,6 +570,53 @@ test("reduced motion renders the completed 3D scene with ordinary scrolling", as
     page.getByRole("heading", { name: "Portfolio", exact: true }),
   ).toBeInViewport();
 });
+
+for (const cancellation of ["reduced motion", "mobile viewport"] as const) {
+  test(`switching to ${cancellation} exits replay and does not restart it automatically`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await expectWebGLScene(page);
+    await startReplay(page);
+    await scrollThroughConstruction(page, liftProgress(3, 0.59));
+    await expectLift(page, 3, 0.59);
+
+    if (cancellation === "reduced motion") {
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await expectOrdinaryFlow(page);
+      await expectCompletedBuilding(page);
+    } else {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expect(scene(page)).toHaveCount(0);
+      await expect(page.locator(".mobile-construction-art img")).toBeVisible();
+      await expect(page.getByTestId("construction-track")).toHaveAttribute(
+        "data-animated",
+        "false",
+      );
+    }
+    await expect(
+      page.getByRole("button", { name: "Exit replay" }),
+    ).toBeHidden();
+    await expect(
+      page.getByRole("button", { name: "Replay the build" }),
+    ).toBeHidden();
+
+    if (cancellation === "reduced motion") {
+      await page.emulateMedia({ reducedMotion: "no-preference" });
+    } else {
+      await page.setViewportSize({ width: 1440, height: 900 });
+    }
+    await page.mouse.move(20, 200);
+    await page.mouse.wheel(0, -5000);
+    await expectWebGLScene(page);
+    await expectOrdinaryFlow(page);
+    await expectCompletedBuilding(page);
+    await expect(
+      page.getByRole("button", { name: "Replay the build" }),
+    ).toBeVisible();
+  });
+}
 
 test("an unavailable WebGL context leaves a vector scene and usable work link", async ({
   page,
@@ -524,6 +640,9 @@ test("an unavailable WebGL context leaves a vector scene and usable work link", 
   await expectOrdinaryFlow(page);
   await expect(scene(page).getByTestId("construction-fallback")).toBeVisible();
   await expect(scene(page).locator("img, image")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Replay the build" }),
+  ).toBeHidden();
   await page
     .locator("#home")
     .getByRole("link", { name: "View my work", exact: true })
@@ -546,7 +665,7 @@ test.describe("without JavaScript", () => {
       page.getByText("Scroll to build", { exact: true }),
     ).toBeHidden();
     await expect(
-      page.getByRole("button", { name: "Replay construction" }),
+      page.getByRole("button", { name: "Replay the build" }),
     ).toBeHidden();
     await page
       .locator("#home")

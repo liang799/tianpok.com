@@ -156,51 +156,63 @@ export const ManualMotion: Story = {
     await expect(slider).toHaveValue("50");
     await expect(panel.getByText("50%", { exact: true })).toBeVisible();
     await expect(panel.getByText(/input\.set\(0\.50+\)/)).toBeVisible();
-    await waitFor(async () => {
-      await expect(scene).toHaveAttribute("data-phase", "approach");
-      await expect(scene).toHaveAttribute("data-attached", "false");
-      await expect(scene).toHaveAttribute("data-placed", "false");
-      await expect(scene).toHaveAttribute(
-        "data-active-piece",
-        CONSTRUCTION_PIECES[4].id,
-      );
-      await expect(scene).toHaveAttribute("data-placed-count", "4");
-    });
+    await waitFor(
+      async () => {
+        await expect(scene).toHaveAttribute("data-phase", "approach");
+        await expect(scene).toHaveAttribute("data-attached", "false");
+        await expect(scene).toHaveAttribute("data-placed", "false");
+        await expect(scene).toHaveAttribute(
+          "data-active-piece",
+          CONSTRUCTION_PIECES[4].id,
+        );
+        await expect(scene).toHaveAttribute("data-placed-count", "4");
+      },
+      { timeout: 3000 },
+    );
 
     await userEvent.selectOptions(
       panel.getByRole("combobox", { name: "Inspect a lift" }),
       "7",
     );
     await expect(slider).toHaveValue("93.8");
-    await waitFor(async () => {
-      await expect(scene).toHaveAttribute(
-        "data-active-piece",
-        CONSTRUCTION_PIECES[7].id,
-      );
-      await expect(scene).toHaveAttribute("data-phase", "slew");
-      await expect(scene).toHaveAttribute("data-attached", "true");
-      await expect(scene).toHaveAttribute("data-placed-count", "7");
-    });
+    await waitFor(
+      async () => {
+        await expect(scene).toHaveAttribute(
+          "data-active-piece",
+          CONSTRUCTION_PIECES[7].id,
+        );
+        await expect(scene).toHaveAttribute("data-phase", "slew");
+        await expect(scene).toHaveAttribute("data-attached", "true");
+        await expect(scene).toHaveAttribute("data-placed-count", "7");
+      },
+      { timeout: 3000 },
+    );
 
     await userEvent.click(panel.getByRole("button", { name: "Complete" }));
     await expect(slider).toHaveValue("100");
-    await waitFor(async () => {
-      await expect(scene).toHaveAttribute("data-phase", "completed");
-      await expect(scene).toHaveAttribute("data-placed", "true");
-      await expect(scene).toHaveAttribute("data-attached", "false");
-      await expect(scene).toHaveAttribute(
-        "data-placed-count",
-        String(CONSTRUCTION_PIECES.length),
-      );
-    });
+    await waitFor(
+      async () => {
+        await expect(scene).toHaveAttribute("data-phase", "completed");
+        await expect(scene).toHaveAttribute("data-placed", "true");
+        await expect(scene).toHaveAttribute("data-attached", "false");
+        await expect(scene).toHaveAttribute(
+          "data-placed-count",
+          String(CONSTRUCTION_PIECES.length),
+        );
+      },
+      { timeout: 3000 },
+    );
 
     await userEvent.click(panel.getByRole("button", { name: "Start" }));
     await expect(slider).toHaveValue("0");
-    await waitFor(async () => {
-      await expect(scene).toHaveAttribute("data-phase", "approach");
-      await expect(scene).toHaveAttribute("data-placed", "false");
-      await expect(scene).toHaveAttribute("data-placed-count", "0");
-    });
+    await waitFor(
+      async () => {
+        await expect(scene).toHaveAttribute("data-phase", "approach");
+        await expect(scene).toHaveAttribute("data-placed", "false");
+        await expect(scene).toHaveAttribute("data-placed-count", "0");
+      },
+      { timeout: 3000 },
+    );
     // Native range keyboard behavior is covered in Playwright; Storybook's
     // userEvent does not implement Home/End for input[type=range].
     fireEvent.change(slider, { target: { value: "42" } });

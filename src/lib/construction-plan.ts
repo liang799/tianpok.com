@@ -11,6 +11,7 @@ export type ConstructionPiece = {
 };
 
 export const PICKUP_SURFACE_HEIGHT = 0.38;
+const STRUCTURE_WIDTH_SCALE = 1.35;
 
 function piece(
   id: string,
@@ -25,9 +26,13 @@ function piece(
     id,
     label,
     kind,
-    size,
+    size: [size[0] * STRUCTURE_WIDTH_SCALE, size[1], size[2]],
     pickup: [staging[0], PICKUP_SURFACE_HEIGHT + size[1] / 2, staging[1]],
-    placement,
+    placement: [
+      placement[0] * STRUCTURE_WIDTH_SCALE,
+      placement[1],
+      placement[2],
+    ],
     accent,
   };
 }
@@ -73,7 +78,7 @@ export const CONSTRUCTION_PIECES: readonly ConstructionPiece[] = [
     "P · crossbeam",
     "p-beam",
     [1.15, 0.58, 0.85],
-    [-0.1, 3.7],
+    [-0.25, 3.7],
     [1.905, 2.55, 0.18],
   ),
   piece(
@@ -81,7 +86,7 @@ export const CONSTRUCTION_PIECES: readonly ConstructionPiece[] = [
     "P · outer column",
     "p-outer",
     [0.66, 0.89, 0.85],
-    [1.0, 3.7],
+    [1.3, 3.7],
     [2.15, 3.285, 0.18],
   ),
   piece(
@@ -89,7 +94,7 @@ export const CONSTRUCTION_PIECES: readonly ConstructionPiece[] = [
     "P · roof beam",
     "p-beam",
     [1.15, 0.66, 0.85],
-    [2.1, 3.7],
+    [2.75, 3.7],
     [1.905, 4.06, 0.18],
     "orange-top",
   ),
@@ -98,7 +103,7 @@ export const CONSTRUCTION_PIECES: readonly ConstructionPiece[] = [
     "T · crown beam",
     "t-cap",
     [2.8, 0.72, 1.05],
-    [-2.7, 3.7],
+    [-3.05, 3.7],
     [-0.8, 5.15, 0.45],
     "orange-top",
   ),

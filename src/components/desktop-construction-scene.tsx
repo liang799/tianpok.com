@@ -25,6 +25,7 @@ type SceneProps = {
   progress?: MotionValue<number>;
   animated?: boolean;
   dark?: boolean;
+  overview?: boolean;
   onRendererChange?: (renderer: Renderer) => void;
 };
 
@@ -50,9 +51,11 @@ export default function DesktopConstructionScene({
   progress,
   animated = false,
   dark = false,
+  overview = false,
   onRendererChange,
 }: SceneProps) {
   const host = useRef<HTMLDivElement>(null);
+  const siteLabel = useRef<HTMLDivElement>(null);
   const [nearViewport, setNearViewport] = useState(false);
   const [renderer, setRenderer] = useState<Renderer>("loading");
   const reportRenderer = useCallback(
@@ -67,6 +70,13 @@ export default function DesktopConstructionScene({
     () => reportRenderer("fallback"),
     [reportRenderer],
   );
+  const projectLabel = useCallback((x: number, y: number, fontSize: number) => {
+    const label = siteLabel.current;
+    if (!label) return;
+    label.style.left = `${x}px`;
+    label.style.top = `${y}px`;
+    label.style.fontSize = `${fontSize}px`;
+  }, []);
   const frame = useCallback(
     (
       value: number,
@@ -111,6 +121,7 @@ export default function DesktopConstructionScene({
       data-testid="desktop-construction-scene"
       data-renderer={renderer}
       data-theme={dark ? "dark" : "light"}
+      data-overview={overview}
       aria-hidden="true"
     >
       {renderer !== "webgl" && (
@@ -124,12 +135,23 @@ export default function DesktopConstructionScene({
             progress={progress}
             animated={animated}
             dark={dark}
+            overview={overview}
+            onProjectLabel={projectLabel}
             onReady={ready}
             onFailure={failed}
             onFrame={frame}
           />
         </CanvasBoundary>
       )}
+      <div ref={siteLabel} className={styles.siteLabel}>
+        Building
+        <br />a brighter
+        <br />
+        digital
+        <br />
+        tomorrow
+        <span />
+      </div>
     </div>
   );
 }

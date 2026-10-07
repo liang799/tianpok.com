@@ -26,6 +26,8 @@ type CanvasProps = {
   progress?: MotionValue<number>;
   animated: boolean;
   dark: boolean;
+  overview?: boolean;
+  onProjectLabel: (x: number, y: number, fontSize: number) => void;
   onReady: () => void;
   onFailure: () => void;
   onFrame: (
@@ -35,12 +37,27 @@ type CanvasProps = {
   ) => void;
 };
 
-function CameraFrame() {
+function CameraFrame({
+  overview = false,
+  onProjectLabel,
+}: Pick<CanvasProps, "overview" | "onProjectLabel">) {
   const { camera, size, invalidate } = useThree();
   useLayoutEffect(() => {
-    fitCamera(camera as OrthographicCamera, size.width, size.height);
+    fitCamera(camera as OrthographicCamera, size.width, size.height, overview);
+    camera.updateMatrixWorld();
+    const label = new Vector3(7.3, 0.6, 1.27).project(camera);
+    const ortho = camera as OrthographicCamera;
+    const labelFontSize = (size.height / (ortho.top - ortho.bottom)) * 0.2;
+    onProjectLabel(
+      Math.min(
+        ((label.x + 1) * size.width) / 2,
+        size.width - labelFontSize * 10,
+      ),
+      ((1 - label.y) * size.height) / 2,
+      labelFontSize,
+    );
     invalidate();
-  }, [camera, size.width, size.height, invalidate]);
+  }, [camera, size.width, size.height, invalidate, overview, onProjectLabel]);
   return null;
 }
 
@@ -49,15 +66,20 @@ function fitCamera(
   camera: OrthographicCamera,
   width: number,
   viewportHeight: number,
+  overview: boolean,
 ) {
   const aspect = width / Math.max(1, viewportHeight);
-  const height = Math.max(12.8, 15.8 / aspect);
+  const height = overview
+    ? Math.max(12.8, 16 / aspect)
+    : Math.max(16.6, 19 / aspect);
   camera.left = (-height * aspect) / 2;
   camera.right = (height * aspect) / 2;
   camera.top = height / 2;
   camera.bottom = -height / 2;
-  camera.position.set(15, 12, 22);
-  camera.lookAt(0, 4.9, 0);
+  const centerX = overview ? -2.4 : -0.8;
+  const centerY = overview ? 3.3 : 4.1;
+  camera.position.set(centerX - 12, centerY + 5.6, 28);
+  camera.lookAt(centerX, centerY, 0);
   camera.updateProjectionMatrix();
 }
 
@@ -67,6 +89,7 @@ const up = new Vector3(0, 1, 0);
 function CraneSequence({
   progress,
   animated,
+  overview = false,
   onReady,
   onFailure,
   onFrame,
@@ -81,7 +104,7 @@ function CraneSequence({
   const slingGroup = useRef<Group>(null);
   const firstFrame = useRef(true);
   const readyFrame = useRef(0);
-  const lastProgress = useRef(-1);
+  const lastFrame = useRef("");
   const direction = useRef(new Vector3());
   const endpoint = useRef(new Vector3());
   const start = useRef(new Vector3());
@@ -109,23 +132,34 @@ function CraneSequence({
   useFrame(() => {
     const value =
       animated && progress ? Math.max(0, Math.min(1, progress.get())) : 1;
-    if (value === lastProgress.current && !firstFrame.current) return;
-    lastProgress.current = value;
+    const frameKey = `${value}:${overview}`;
+    if (frameKey === lastFrame.current && !firstFrame.current) return;
+    lastFrame.current = frameKey;
     const sample = sampleCrane(value);
-    if (boom.current) boom.current.rotation.y = sample.boomRotation;
-    if (trolley.current) trolley.current.position.x = sample.trolleyRadius;
+    const angle = overview ? 2.7367 : sample.boomRotation;
+    const radius = overview ? 4.8 : sample.trolleyRadius;
+    const worldRadius = overview ? radius * 0.68 : radius;
+    const boomHeight = overview ? 7.6 : BOOM_HEIGHT;
+    const hookPosition = overview
+      ? [
+          CRANE_BASE[0] + Math.cos(angle) * worldRadius,
+          6.95,
+          CRANE_BASE[2] - Math.sin(angle) * worldRadius,
+        ]
+      : sample.hookPosition;
+    if (boom.current) {
+      boom.current.rotation.y = angle;
+      boom.current.position.y = boomHeight;
+    }
+    if (trolley.current) trolley.current.position.x = radius;
     if (cable.current) {
-      cable.current.position.set(
-        sample.hookPosition[0],
-        BOOM_HEIGHT,
-        sample.hookPosition[2],
-      );
-      cable.current.scale.y = sample.cableLength;
-      cable.current.rotation.y = sample.boomRotation;
+      cable.current.position.set(hookPosition[0], boomHeight, hookPosition[2]);
+      cable.current.scale.y = boomHeight - hookPosition[1];
+      cable.current.rotation.y = angle;
     }
     if (hook.current) {
-      hook.current.position.fromArray(sample.hookPosition);
-      hook.current.rotation.y = sample.boomRotation;
+      hook.current.position.fromArray(hookPosition);
+      hook.current.rotation.y = angle;
     }
     let pieceCount = 0;
     let placedCount = 0;
@@ -175,10 +209,17 @@ function CraneSequence({
 
   return (
     <>
-      <group position={CRANE_BASE}>
+      <group
+        position={CRANE_BASE}
+        scale={overview ? [0.65, 7.6 / BOOM_HEIGHT, 0.65] : [1, 1, 1]}
+      >
         <CraneTower />
       </group>
-      <group ref={boom} position={[CRANE_BASE[0], BOOM_HEIGHT, CRANE_BASE[2]]}>
+      <group
+        ref={boom}
+        position={[CRANE_BASE[0], BOOM_HEIGHT, CRANE_BASE[2]]}
+        scale={overview ? [0.68, 0.62, 0.65] : [1, 1, 1]}
+      >
         <CraneBoom />
         <group ref={trolley}>
           <CraneTrolley />
@@ -198,6 +239,7 @@ function CraneSequence({
       </group>
       <group ref={hook}>
         <CraneHook />
+        {overview && <SuspendedCrate />}
       </group>
       {CONSTRUCTION_PIECES.map((piece, index) => (
         <group
@@ -231,6 +273,44 @@ function CraneSequence({
   );
 }
 
+/** The presentation load hangs from the same hook as the working assembly rig. */
+function SuspendedCrate() {
+  return (
+    <group rotation={[0, -2.7367, 0]}>
+      {[-1, 1].flatMap((x) =>
+        [-1, 1].map((z) => {
+          const start = new Vector3(0, -0.55, 0);
+          const end = new Vector3(x * 0.4, -0.77, z * 0.34);
+          const delta = end.clone().sub(start);
+          return (
+            <mesh
+              key={`${x}:${z}`}
+              position={start.add(end).multiplyScalar(0.5)}
+              quaternion={new Quaternion().setFromUnitVectors(
+                up,
+                delta.clone().normalize(),
+              )}
+            >
+              <cylinderGeometry args={[0.012, 0.012, delta.length(), 6]} />
+              <meshStandardMaterial color="#494a42" />
+            </mesh>
+          );
+        }),
+      )}
+      <mesh position={[0, -1.2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[1.03, 0.86, 0.9]} />
+        <meshStandardMaterial color="#f47737" roughness={0.9} />
+      </mesh>
+      {[-0.3, 0.3].map((x) => (
+        <mesh key={x} position={[x, -1.2, 0.453]}>
+          <boxGeometry args={[0.009, 0.83, 0.008]} />
+          <meshStandardMaterial color="#bd592e" />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 export default function ConstructionCanvas(props: CanvasProps) {
   return (
     <Canvas
@@ -243,15 +323,18 @@ export default function ConstructionCanvas(props: CanvasProps) {
       shadows="soft"
       resize={{ scroll: false, debounce: 0 }}
     >
-      <CameraFrame />
-      <fog attach="fog" args={[props.dark ? "#0c1011" : "#faf9f6", 28, 44]} />
-      <ambientLight intensity={props.dark ? 1.0 : 1.55} />
+      <CameraFrame
+        overview={props.overview}
+        onProjectLabel={props.onProjectLabel}
+      />
+      <fog attach="fog" args={[props.dark ? "#0c1011" : "#faf9f6", 38, 58]} />
+      <ambientLight intensity={props.dark ? 1.0 : 1.25} />
       <hemisphereLight
-        args={["#fff5e7", props.dark ? "#343d43" : "#c9b9a4", 1.3]}
+        args={["#fff5e7", props.dark ? "#343d43" : "#c9b9a4", 1.0]}
       />
       <directionalLight
         position={[-7, 16, 10]}
-        intensity={3.1}
+        intensity={2.4}
         color="#fff3df"
         castShadow
         shadow-mapSize={[1024, 1024]}
@@ -270,7 +353,7 @@ export default function ConstructionCanvas(props: CanvasProps) {
         color="#ffb277"
       />
       <CityBackdrop />
-      <BuildingSite />
+      <BuildingSite overview={props.overview} />
       <CraneSequence {...props} />
     </Canvas>
   );

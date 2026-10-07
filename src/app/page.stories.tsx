@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, waitFor, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import Home from "./page";
@@ -58,10 +58,32 @@ export const Desktop: Story = {
       () => {
         expect(scene).toHaveAttribute("data-renderer", "webgl");
         expect(scene.querySelector("canvas")).toBeVisible();
+        expect(scene).toHaveAttribute("data-phase", "completed");
+        expect(scene).toHaveAttribute("data-placed-count", "8");
       },
       { timeout: 10_000 },
     );
     await expect(scene.querySelector("img, image")).toBeNull();
+    const track = canvas.getByTestId("construction-track");
+    await expect(track).toHaveAttribute("data-animated", "false");
+    await userEvent.click(
+      hero.getByRole("button", { name: "Replay the build" }),
+    );
+    await waitFor(() => {
+      expect(track).toHaveAttribute("data-animated", "true");
+      expect(scene).toHaveAttribute("data-phase", "approach");
+      expect(scene).toHaveAttribute("data-placed-count", "0");
+      expect(Number(scene.getAttribute("data-progress"))).toBeLessThan(0.001);
+    });
+    await userEvent.click(hero.getByRole("button", { name: "Exit replay" }));
+    await waitFor(() => {
+      expect(track).toHaveAttribute("data-animated", "false");
+      expect(scene).toHaveAttribute("data-phase", "completed");
+      expect(scene).toHaveAttribute("data-placed-count", "8");
+    });
+    await expect(
+      hero.getByRole("button", { name: "Replay the build" }),
+    ).toHaveFocus();
   },
 };
 
@@ -99,6 +121,9 @@ export const Mobile: Story = {
       { timeout: 10_000 },
     );
     await expect(canvas.queryByTestId("desktop-construction-scene")).toBeNull();
+    await expect(
+      canvas.queryByRole("button", { name: "Replay the build" }),
+    ).toBeNull();
     await expect(
       context.canvasElement.querySelector(".hero-art canvas"),
     ).toBeNull();
