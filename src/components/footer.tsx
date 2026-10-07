@@ -96,7 +96,9 @@ export function Footer() {
           </div>
         </div>
         <div className={styles.bottom}>
-          <p>© 2026 Tian Pok. All rights reserved.</p>
+          <p className={styles.copyright}>
+            <span>© 2026 Tian Pok.</span> <span>All rights reserved.</span>
+          </p>
           <p className={styles.location}>
             Based in Singapore <span aria-hidden="true">🇸🇬</span>
           </p>
