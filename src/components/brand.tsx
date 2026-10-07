@@ -15,7 +15,7 @@ export function Brand({ footer = false }: { footer?: boolean }) {
         alt=""
         width={56}
         height={54}
-        priority
+        preload={!footer}
       />
       <span>
         <Image
@@ -24,7 +24,7 @@ export function Brand({ footer = false }: { footer?: boolean }) {
           alt=""
           width={200}
           height={18}
-          priority
+          preload={!footer}
         />
         {footer && (
           <span className="brand-tagline">Ideas under construction</span>

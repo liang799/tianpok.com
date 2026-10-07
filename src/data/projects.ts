@@ -39,7 +39,7 @@ export const projects: Project[] = [
     image: "/images/bellcurvehero.webp",
     imageAlt:
       "BellCurveHero copyright policy displayed on a tablet with keyboard and a phone.",
-    url: "https://www.bellcurvehero.com/copyright",
+    // The original live site no longer resolves; retain the case study.
   },
   {
     slug: "tree",
@@ -95,6 +95,6 @@ export const projects: Project[] = [
     image: "/images/ost.webp",
     imageAlt:
       "Onesystem Technologies product website on a laptop alongside its blog on a phone.",
-    url: "https://onesystemstech.com/blog",
+    // The original /blog destination returns 404; retain the case study.
   },
 ];

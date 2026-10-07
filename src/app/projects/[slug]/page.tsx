@@ -4,6 +4,8 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ArrowRight, ArrowUpRight } from "@/components/icons";
 import { projects } from "@/data/projects";
+import { StructuredData } from "@/components/structured-data";
+import { pageMetadata, projectStructuredData } from "@/lib/seo";
 
 type ProjectPageProps = { params: Promise<{ slug: string }> };
 
@@ -19,7 +21,12 @@ export async function generateMetadata({
 
   if (!project) notFound();
 
-  return { title: project.title, description: project.description };
+  return pageMetadata({
+    title: project.title,
+    description: `${project.description} Explore the project, built with ${project.tags.join(", ")}, in Tian Pok’s portfolio.`,
+    path: `/projects/${project.slug}`,
+    image: { url: project.image, alt: project.imageAlt },
+  });
 }
 
 export default async function ProjectPage({ params }: ProjectPageProps) {
@@ -30,6 +37,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
 
   return (
     <main id="main-content" className="site-container pb-8">
+      <StructuredData data={projectStructuredData(project)} />
       <div className="page-intro">
         <Link href="/projects" className="text-link mb-7!">
           <span className="rotate-180">

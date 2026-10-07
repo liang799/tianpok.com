@@ -2,24 +2,17 @@ import type { Metadata } from "next";
 import { anton, inter } from "./fonts";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
+import { site } from "@/lib/seo";
 import "./globals.css";
 export const metadata: Metadata = {
-  metadataBase: new URL("https://tianpok.com"),
+  metadataBase: new URL(site.url),
   title: {
-    default: "Tian Pok — Ideas Under Construction",
+    default: site.title,
     template: "%s | Tian Pok",
   },
-  description:
-    "Tian Pok — a developer and builder of digital things. A collection of projects, experiments, and ideas in software engineering and product design.",
-  openGraph: {
-    title: "Tian Pok — Ideas Under Construction",
-    description:
-      "A collection of projects, experiments, and ideas. Still learning. Still building.",
-    type: "website",
-    locale: "en_SG",
-    siteName: "Tian Pok",
-  },
-  robots: { index: true, follow: true },
+  description: site.description,
+  authors: [{ name: site.name, url: site.url }],
+  creator: site.name,
 };
 export default function RootLayout({
   children,

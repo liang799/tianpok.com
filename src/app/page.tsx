@@ -6,9 +6,19 @@ import { ArrowRight } from "@/components/icons";
 import { ProjectCard } from "@/components/project-card";
 import { Reveal } from "@/components/reveal";
 import { projects } from "@/data/projects";
+import { StructuredData } from "@/components/structured-data";
+import { homeStructuredData, pageMetadata, site } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: site.title,
+  description: site.description,
+  path: "/",
+});
+
 export default function Home() {
   return (
     <main id="main-content">
+      <StructuredData data={homeStructuredData} />
       <section
         id="home"
         className="hero relative isolate overflow-hidden"

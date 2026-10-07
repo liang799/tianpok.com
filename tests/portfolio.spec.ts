@@ -9,7 +9,7 @@ const projectRoutes = [
   {
     slug: "bellcurvehero",
     title: "BellCurveHero",
-    url: "https://www.bellcurvehero.com/copyright",
+    url: undefined,
   },
   {
     slug: "tree",
@@ -29,7 +29,7 @@ const projectRoutes = [
   {
     slug: "onesystem-technologies",
     title: "Onesystem Technologies",
-    url: "https://onesystemstech.com/blog",
+    url: undefined,
   },
 ];
 
@@ -39,7 +39,9 @@ test("home presents the construction headline and six linked projects", async ({
   const response = await page.goto("/");
 
   expect(response?.status()).toBe(200);
-  await expect(page).toHaveTitle("Tian Pok — Ideas Under Construction");
+  await expect(page).toHaveTitle(
+    "Tian Pok — Developer & Builder of Digital Things",
+  );
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     /Ideas\s*Under\s*Construction/,
   );
@@ -109,8 +111,12 @@ for (const project of projectRoutes) {
     const projectLink = page.getByRole("link", {
       name: /^(View on GitHub|View design|Visit project)$/,
     });
-    await expect(projectLink).toHaveAttribute("href", project.url);
-    await expect(projectLink).toHaveAttribute("target", "_blank");
+    if (project.url) {
+      await expect(projectLink).toHaveAttribute("href", project.url);
+      await expect(projectLink).toHaveAttribute("target", "_blank");
+    } else {
+      await expect(projectLink).toHaveCount(0);
+    }
 
     const contactHref = await page
       .getByRole("link", { name: "Ask me about this project" })

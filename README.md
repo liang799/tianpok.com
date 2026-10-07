@@ -23,6 +23,8 @@ npm run test:e2e    # Chromium browser checks
 
 For a fresh machine, install the test browser once with `npx playwright install chromium`. The test configuration starts a local server automatically if one is not running.
 
+To verify a production build, run `npm run build` and `npm start -- --port 3001`, then run `PLAYWRIGHT_BASE_URL=http://localhost:3001 npm run test:e2e` in another terminal.
+
 ## Storybook and component tests
 
 ```sh
@@ -57,8 +59,16 @@ The page includes a mobile navigation menu, section-aware navigation, subtle cra
 
 Google fonts are self-hosted by `next/font` at build time; an internet connection is needed for the first font download. Project images are local and served through Next.js image optimization.
 
+## Search and sharing
+
+`src/lib/seo.ts` is the source of truth for the site's identity and canonical origin, `https://www.tianpok.com`, matching the existing production redirect. Every page has its own title, description, canonical URL, Open Graph metadata, and Twitter card. Project previews use their actual images; the home and project index use a branded 1200 × 630 PNG generated at build time at `/share-image`.
+
+`/sitemap.xml` lists the home page, project index, and every project in `src/data/projects.ts`. `/robots.txt` allows crawling and points to that sitemap. Sitemap modification dates are omitted until genuine content-update dates are available. Server-rendered JSON-LD describes Tian Pok, the website, the project collection, individual creative works, and project breadcrumbs.
+
+`npm run test:e2e` includes crawler checks with JavaScript disabled for metadata, structured data, sitemap coverage, social-image responses, canonical query handling, and 404 indexing behavior. Once deployed, submit `https://www.tianpok.com/sitemap.xml` in Google Search Console and inspect the live URLs. Search Console ownership verification is account-specific and is not configured in this repository.
+
 ## Asset and content sources
 
 The logo comes from the supplied **Tian Pok Vectors** folder. Project descriptions and links are adapted from [the previous portfolio](https://github.com/liang799/portfolio/blob/main/components/Portfolio.tsx), and project images come from its [public images directory](https://github.com/liang799/portfolio/tree/main/public/images). The OST image comes from the original portfolio's public Cloudinary asset, `dald44vq9/ost-freelance-2_u4ri8d`.
 
-Images are resized to a maximum width of 1200 pixels and saved as WebP for the web. Original destinations are preserved; their continued availability is controlled by the external services.
+Images are resized to a maximum width of 1200 pixels and saved as WebP for the web. Working original destinations are preserved. The BellCurveHero live-site button and Onesystem blog button are omitted because their destinations failed DNS resolution and returned 404, respectively, when checked on 7 October 2026; their project pages remain available.
