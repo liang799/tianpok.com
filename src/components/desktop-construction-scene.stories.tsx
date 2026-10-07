@@ -55,6 +55,7 @@ export const ScrollAssembly: Story = {
         await expect(scene).toHaveAttribute("data-renderer", "webgl");
         await expect(scene.querySelector("canvas")).toBeVisible();
         await expect(scene).toHaveAttribute("data-phase", "approach");
+        await expect(scene).toHaveAttribute("data-ambient", "paused");
         await expect(scene).toHaveAttribute(
           "data-piece-count",
           String(CONSTRUCTION_PIECES.length),
@@ -156,6 +157,7 @@ export const StaticFallback: Story = {
         await expect(scene).toHaveAttribute("data-renderer", "webgl");
         await expect(scene.querySelector("canvas")).toBeVisible();
         await expect(scene).toHaveAttribute("data-phase", "completed");
+        await expect(scene).toHaveAttribute("data-ambient", "paused");
         await expect(scene).toHaveAttribute("data-placed", "true");
         await expect(scene).toHaveAttribute("data-attached", "false");
         await expect(scene).toHaveAttribute(

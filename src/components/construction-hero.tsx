@@ -322,6 +322,7 @@ export function ConstructionHero({ children }: { children: ReactNode }) {
               progress={assemblyProgress}
               animated={animated}
               overview={!animated}
+              ambientMotion={!animated && !reducedMotion}
               onRendererChange={onRendererChange}
             />
           )}

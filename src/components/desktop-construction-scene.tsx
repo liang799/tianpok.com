@@ -7,10 +7,12 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import type { MotionValue } from "motion/react";
 import type { CraneSample } from "@/lib/crane-choreography";
+import type { SiteLifeFrame } from "./construction-3d/ambient-life";
 import { CONSTRUCTION_PIECES } from "@/lib/construction-plan";
 import { ConstructionFallback } from "./construction-3d/fallback";
 import styles from "./construction-3d/scene.module.css";
@@ -26,8 +28,26 @@ type SceneProps = {
   animated?: boolean;
   dark?: boolean;
   overview?: boolean;
+  ambientMotion?: boolean;
   onRendererChange?: (renderer: Renderer) => void;
 };
+
+function subscribeMotionAvailability(onChange: () => void) {
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+  document.addEventListener("visibilitychange", onChange);
+  reduced.addEventListener("change", onChange);
+  return () => {
+    document.removeEventListener("visibilitychange", onChange);
+    reduced.removeEventListener("change", onChange);
+  };
+}
+
+function motionAvailable() {
+  return (
+    !document.hidden &&
+    !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
 
 class CanvasBoundary extends Component<
   { children: ReactNode; onFailure: () => void },
@@ -52,12 +72,26 @@ export default function DesktopConstructionScene({
   animated = false,
   dark = false,
   overview = false,
+  ambientMotion = false,
   onRendererChange,
 }: SceneProps) {
   const host = useRef<HTMLDivElement>(null);
   const siteLabel = useRef<HTMLDivElement>(null);
   const [nearViewport, setNearViewport] = useState(false);
+  const [inViewport, setInViewport] = useState(false);
+  const motionAllowed = useSyncExternalStore(
+    subscribeMotionAvailability,
+    motionAvailable,
+    () => false,
+  );
   const [renderer, setRenderer] = useState<Renderer>("loading");
+  const ambientRunning =
+    ambientMotion &&
+    overview &&
+    !animated &&
+    inViewport &&
+    motionAllowed &&
+    renderer === "webgl";
   const reportRenderer = useCallback(
     (next: Renderer) => {
       setRenderer(next);
@@ -98,6 +132,15 @@ export default function DesktopConstructionScene({
     },
     [],
   );
+  const lifeFrame = useCallback((frame: SiteLifeFrame) => {
+    if (!host.current) return;
+    const data = host.current.dataset;
+    data.ambientTime = frame.time.toFixed(3);
+    data.dronePosition = JSON.stringify(frame.dronePosition);
+    data.workerPosition = JSON.stringify(frame.workerPosition);
+    data.workerPose = JSON.stringify(frame.workerPose);
+    data.rotorAngle = frame.rotorAngle.toFixed(3);
+  }, []);
 
   useEffect(() => {
     const element = host.current;
@@ -111,7 +154,14 @@ export default function DesktopConstructionScene({
       { rootMargin: "120px" },
     );
     observer.observe(element);
-    return () => observer.disconnect();
+    const visibility = new IntersectionObserver(([entry]) =>
+      setInViewport(entry.isIntersecting),
+    );
+    visibility.observe(element);
+    return () => {
+      observer.disconnect();
+      visibility.disconnect();
+    };
   }, []);
 
   return (
@@ -122,6 +172,7 @@ export default function DesktopConstructionScene({
       data-renderer={renderer}
       data-theme={dark ? "dark" : "light"}
       data-overview={overview}
+      data-ambient={ambientRunning ? "running" : "paused"}
       aria-hidden="true"
     >
       {renderer !== "webgl" && (
@@ -136,6 +187,8 @@ export default function DesktopConstructionScene({
             animated={animated}
             dark={dark}
             overview={overview}
+            ambientMotion={ambientRunning}
+            onLifeFrame={lifeFrame}
             onProjectLabel={projectLabel}
             onReady={ready}
             onFailure={failed}

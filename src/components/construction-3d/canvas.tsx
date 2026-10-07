@@ -21,12 +21,15 @@ import {
   CraneTrolley,
 } from "./models";
 import styles from "./scene.module.css";
+import { SiteLife, type SiteLifeFrame } from "./ambient-life";
 
 type CanvasProps = {
   progress?: MotionValue<number>;
   animated: boolean;
   dark: boolean;
   overview?: boolean;
+  ambientMotion?: boolean;
+  onLifeFrame: (frame: SiteLifeFrame) => void;
   onProjectLabel: (x: number, y: number, fontSize: number) => void;
   onReady: () => void;
   onFailure: () => void;
@@ -36,6 +39,18 @@ type CanvasProps = {
     rendered: { pieceCount: number; placedCount: number },
   ) => void;
 };
+
+/** Keep idle activity to 30fps; all other scene states stay demand-rendered. */
+function AmbientFrames({ running }: { running: boolean }) {
+  const invalidate = useThree((state) => state.invalidate);
+  useEffect(() => {
+    invalidate();
+    if (!running) return;
+    const timer = window.setInterval(invalidate, 1000 / 30);
+    return () => window.clearInterval(timer);
+  }, [running, invalidate]);
+  return null;
+}
 
 function CameraFrame({
   overview = false,
@@ -327,6 +342,7 @@ export default function ConstructionCanvas(props: CanvasProps) {
         overview={props.overview}
         onProjectLabel={props.onProjectLabel}
       />
+      <AmbientFrames running={Boolean(props.ambientMotion)} />
       <fog attach="fog" args={[props.dark ? "#0c1011" : "#faf9f6", 38, 58]} />
       <ambientLight intensity={props.dark ? 1.0 : 1.25} />
       <hemisphereLight
@@ -354,6 +370,11 @@ export default function ConstructionCanvas(props: CanvasProps) {
       />
       <CityBackdrop />
       <BuildingSite overview={props.overview} />
+      <SiteLife
+        running={Boolean(props.ambientMotion)}
+        overview={props.overview}
+        onFrame={props.onLifeFrame}
+      />
       <CraneSequence {...props} />
     </Canvas>
   );

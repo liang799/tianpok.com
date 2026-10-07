@@ -66,6 +66,18 @@ export const Desktop: Story = {
     await expect(scene.querySelector("img, image")).toBeNull();
     const track = canvas.getByTestId("construction-track");
     await expect(track).toHaveAttribute("data-animated", "false");
+    await waitFor(() =>
+      expect(scene).toHaveAttribute("data-ambient", "running"),
+    );
+    const ambientTime = Number(scene.getAttribute("data-ambient-time"));
+    await waitFor(() =>
+      expect(Number(scene.getAttribute("data-ambient-time"))).toBeGreaterThan(
+        ambientTime + 0.05,
+      ),
+    );
+    await expect(
+      hero.queryByRole("button", { name: /^(Pause|Resume) scene motion$/ }),
+    ).toBeNull();
     await userEvent.click(
       hero.getByRole("button", { name: "Replay the build" }),
     );
@@ -73,6 +85,7 @@ export const Desktop: Story = {
       expect(track).toHaveAttribute("data-animated", "true");
       expect(scene).toHaveAttribute("data-phase", "approach");
       expect(scene).toHaveAttribute("data-placed-count", "0");
+      expect(scene).toHaveAttribute("data-ambient", "paused");
       expect(Number(scene.getAttribute("data-progress"))).toBeLessThan(0.001);
     });
     await userEvent.click(hero.getByRole("button", { name: "Exit replay" }));
@@ -80,6 +93,7 @@ export const Desktop: Story = {
       expect(track).toHaveAttribute("data-animated", "false");
       expect(scene).toHaveAttribute("data-phase", "completed");
       expect(scene).toHaveAttribute("data-placed-count", "8");
+      expect(scene).toHaveAttribute("data-ambient", "running");
     });
     await expect(
       hero.getByRole("button", { name: "Replay the build" }),
@@ -123,6 +137,9 @@ export const Mobile: Story = {
     await expect(canvas.queryByTestId("desktop-construction-scene")).toBeNull();
     await expect(
       canvas.queryByRole("button", { name: "Replay the build" }),
+    ).toBeNull();
+    await expect(
+      canvas.queryByRole("button", { name: /^(Pause|Resume) scene motion$/ }),
     ).toBeNull();
     await expect(
       context.canvasElement.querySelector(".hero-art canvas"),

@@ -19,6 +19,9 @@ async function expectMobileHero(page: Page, { hydrated = true } = {}) {
   await expect(
     page.getByRole("button", { name: "Replay the build" }),
   ).toBeHidden();
+  await expect(
+    page.getByRole("button", { name: /^(Pause|Resume) scene motion$/ }),
+  ).toBeHidden();
   await expect(image).toBeVisible();
   await expect
     .poll(() =>

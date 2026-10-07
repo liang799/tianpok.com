@@ -471,9 +471,6 @@ const site = (() => {
   const orange = parts[ORANGE];
   const timber = parts[WOOD];
   const pallets: Part[] = [];
-  const workerLimbs: Part[] = [];
-  const skin: Part[] = [];
-  const hats: Part[] = [];
   const wheels: Part[] = [];
   const tBase = CONSTRUCTION_PIECES[0];
   const pBase = CONSTRUCTION_PIECES[1];
@@ -631,47 +628,6 @@ const site = (() => {
     dark.push(box([2.41 + vent * 0.069, 0.6, 2.961], [0.019, 0.26, 0.012]));
   }
 
-  function worker(x: number, y: number, z: number, turn: number) {
-    const footSpread = 0.06;
-    for (const side of [-1, 1]) {
-      workerLimbs.push(
-        beam(
-          [x + side * 0.045, y + 0.24, z],
-          [x + side * footSpread, y + 0.045, z],
-          0.031,
-        ),
-      );
-      dark.push(
-        box(
-          [x + side * footSpread, y + 0.021, z + 0.025],
-          [0.072, 0.042, 0.125],
-        ),
-      );
-    }
-    workerLimbs.push(box([x, y + 0.327, z], [0.077, 0.215, 0.048]));
-    workerLimbs.push(
-      beam([x - 0.079, y + 0.395, z], [x - 0.135, y + 0.235, z + 0.04], 0.024),
-    );
-    workerLimbs.push(
-      beam(
-        [x + 0.079, y + 0.395, z],
-        [x + 0.18, y + 0.33 + turn, z + 0.04],
-        0.024,
-      ),
-    );
-    skin.push(box([x - 0.135, y + 0.228, z + 0.04], [0.025, 0.03, 0.024]));
-    skin.push(box([x + 0.18, y + 0.33 + turn, z + 0.04], [0.025, 0.03, 0.024]));
-    skin.push(box([x, y + 0.475, z], [0.051, 0.062, 0.045]));
-    hats.push(box([x, y + 0.525, z], [0.075, 0.05, 0.071]));
-    orange.push(box([x, y + 0.523, z + 0.013], [0.162, 0.016, 0.14]));
-  }
-  worker(-2.6, 0.22, 1.95, 0.1);
-  worker(-1.91, 1.75, 1.18, -0.07);
-  worker(1.75, 0.22, 1.39, 0.1);
-  worker(-0.8, 0.22, 2.7, 0.08);
-  worker(-6.6, -0.6, 1.3, 0.1);
-  worker(6.8, 2.5, -0.3, 0.08);
-
   // Loose anchor plates and rebar at the edge of the work area.
   for (const x of [0.52, 0.65, 0.78]) {
     steel.push(box([x, 0.68, -1.08], [0.025, 0.91, 0.025]));
@@ -681,7 +637,7 @@ const site = (() => {
     steel.push(box([0.65, y, -1.08], [0.32, 0.022, 0.022]));
     steel.push(box([0.65, y, -1.28], [0.32, 0.022, 0.022]));
   }
-  return { parts, pallets, workerLimbs, skin, hats, wheels };
+  return { parts, pallets, wheels };
 })();
 
 const neighborhood = (() => {
@@ -888,9 +844,6 @@ export const BuildingSite = memo(function BuildingSite({
       <Batch parts={neighborhood} />
       <Batch parts={site.parts} />
       {!overview && <Parts color={WOOD} items={site.pallets} />}
-      <Parts color={GRAPHITE} items={site.workerLimbs} shape="cylinder" />
-      <Parts color="#b5815d" items={site.skin} shape="sphere" />
-      <Parts color={ORANGE_LIGHT} items={site.hats} shape="cloud" />
       <Parts color={GRAPHITE} items={site.wheels} shape="cylinder" />
     </group>
   );
@@ -968,8 +921,6 @@ const city = (() => {
 const atmosphere = (() => {
   const clouds: Part[] = [];
   const birds: Part[] = [];
-  const drone: Part[] = [];
-  const rotors: Part[] = [];
   for (const [x, y, z, scale] of [
     [-9, 3.3, -3, 0.7],
     [12, 4.1, -5, 1.05],
@@ -993,22 +944,7 @@ const atmosphere = (() => {
       beam([x, y, z], [x + 0.1 * scale, y + 0.04 * scale, z], 0.015 * scale),
     );
   }
-  const droneOrigin: Point = [6.1, 4.1, 0.6];
-  const [x, y, z] = droneOrigin;
-  drone.push(box([x, y, z], [0.25, 0.095, 0.16]));
-  drone.push(box([x, y - 0.11, z + 0.045], [0.07, 0.08, 0.07]));
-  for (const dx of [-0.25, 0.25]) {
-    for (const dz of [-0.18, 0.18]) {
-      drone.push(beam([x, y, z], [x + dx, y + 0.025, z + dz], 0.026));
-      drone.push(box([x + dx, y + 0.045, z + dz], [0.045, 0.045, 0.045]));
-      rotors.push(box([x + dx, y + 0.075, z + dz], [0.17, 0.007, 0.035]));
-    }
-  }
-  for (const dx of [-0.12, 0.12]) {
-    drone.push(beam([x + dx, y - 0.025, z], [x + dx, y - 0.17, z], 0.014));
-    drone.push(box([x + dx, y - 0.17, z], [0.015, 0.015, 0.2]));
-  }
-  return { clouds, birds, drone, rotors };
+  return { clouds, birds };
 })();
 
 export const CityBackdrop = memo(function CityBackdrop() {
@@ -1035,13 +971,6 @@ export const CityBackdrop = memo(function CityBackdrop() {
         metalness={0}
       />
       <Parts color="#c2a38d" items={atmosphere.birds} castShadow={false} />
-      <Parts color="#625f53" items={atmosphere.drone} castShadow={false} />
-      <Parts
-        color="#969389"
-        items={atmosphere.rotors}
-        shape="cylinder"
-        castShadow={false}
-      />
     </group>
   );
 });
