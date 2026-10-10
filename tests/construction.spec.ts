@@ -38,6 +38,13 @@ test("the automatic intro and its replay keep ordinary scrolling and hand off to
   await expect(scene).toHaveAttribute("data-renderer", "webgl");
   await expect(scene).toHaveAttribute("data-phase", "completed");
   await expect(scene).toHaveAttribute("data-ambient", "paused");
+  await expect
+    .poll(() =>
+      scene
+        .getByTestId("construction-intro-video")
+        .evaluate((video: HTMLVideoElement) => video.playbackRate),
+    )
+    .toBe(1);
   await expectNormalHeroFlow(page);
   await expect
     .poll(() =>
