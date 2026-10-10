@@ -88,27 +88,41 @@ test("a finished intro retains its poster while the GPU is still loading, then h
 test("a ready GPU expedites the intro without cutting off the build", async ({
   page,
 }) => {
-  await page.goto("/");
-  const scene = heroScene(page);
-  const video = scene.getByTestId("construction-intro-video");
-  await expect(video).toBeVisible();
-  // Pause to isolate the readiness transition from natural media completion.
-  // Readiness should change speed, not jump to the finished live scene.
-  await video.evaluate((element: HTMLVideoElement) => element.pause());
-  await expect(scene).toHaveAttribute("data-renderer", "webgl", {
-    timeout: 20_000,
-  });
-  await expect
-    .poll(() =>
-      video.evaluate((element: HTMLVideoElement) => element.playbackRate),
-    )
-    .toBe(3.5);
-  await expect(scene).toHaveAttribute("data-presentation", "intro");
-  await expect(scene.locator("canvas")).toBeHidden();
-  await expect(scene).toHaveAttribute("data-ambient", "paused");
-  await finishIntroMedia(page);
-  await expect(scene).toHaveAttribute("data-presentation", "live");
-  await expect(scene).toHaveAttribute("data-ambient", "running");
+  const held = await holdCanvasDownload(page);
+  try {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await held.requested();
+    const scene = heroScene(page);
+    const video = scene.getByTestId("construction-intro-video");
+    await expect(video).toBeVisible();
+    await expect
+      .poll(() =>
+        video.evaluate((element: HTMLVideoElement) => element.playbackRate),
+      )
+      .toBe(1);
+
+    // Pause to isolate the readiness transition from media completion.
+    // Readiness changes speed without jumping to a finished live scene.
+    await video.evaluate((element: HTMLVideoElement) => element.pause());
+    held.release();
+    await expect(scene).toHaveAttribute("data-renderer", "webgl", {
+      timeout: 20_000,
+    });
+    await expect
+      .poll(() =>
+        video.evaluate((element: HTMLVideoElement) => element.playbackRate),
+      )
+      .toBe(3.5);
+    await expect(scene).toHaveAttribute("data-presentation", "intro");
+    await expect(scene.locator("canvas")).toBeHidden();
+    await expect(scene).toHaveAttribute("data-ambient", "paused");
+    await finishIntroMedia(page);
+    await expect(scene).toHaveAttribute("data-presentation", "live");
+    await expect(scene).toHaveAttribute("data-ambient", "running");
+  } finally {
+    held.release();
+    await page.unrouteAll({ behavior: "wait" });
+  }
 });
 
 test("skipping before WebGL is ready shows the completed poster without exposing the SVG", async ({
