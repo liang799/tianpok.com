@@ -53,6 +53,13 @@ test("a finished intro retains its poster while the GPU is still loading, then h
     await page.goto("/", { waitUntil: "domcontentloaded" });
     await held.requested();
     await expect(heroScene(page)).toHaveAttribute("data-presentation", "intro");
+    await expect
+      .poll(() =>
+        heroScene(page)
+          .getByTestId("construction-intro-video")
+          .evaluate((element: HTMLVideoElement) => element.playbackRate),
+      )
+      .toBe(1);
     await finishIntroMedia(page);
     await expect(heroScene(page)).toHaveAttribute(
       "data-presentation",
@@ -78,15 +85,24 @@ test("a finished intro retains its poster while the GPU is still loading, then h
   }
 });
 
-test("a ready GPU cannot cut off the automatic intro", async ({ page }) => {
+test("a ready GPU expedites the intro without cutting off the build", async ({
+  page,
+}) => {
   await page.goto("/");
   const scene = heroScene(page);
   const video = scene.getByTestId("construction-intro-video");
   await expect(video).toBeVisible();
+  // Pause to isolate the readiness transition from natural media completion.
+  // Readiness should change speed, not jump to the finished live scene.
   await video.evaluate((element: HTMLVideoElement) => element.pause());
   await expect(scene).toHaveAttribute("data-renderer", "webgl", {
     timeout: 20_000,
   });
+  await expect
+    .poll(() =>
+      video.evaluate((element: HTMLVideoElement) => element.playbackRate),
+    )
+    .toBe(3.5);
   await expect(scene).toHaveAttribute("data-presentation", "intro");
   await expect(scene.locator("canvas")).toBeHidden();
   await expect(scene).toHaveAttribute("data-ambient", "paused");
