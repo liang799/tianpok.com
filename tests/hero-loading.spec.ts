@@ -112,7 +112,7 @@ test("a ready GPU expedites the intro without cutting off the build", async ({
       .poll(() =>
         video.evaluate((element: HTMLVideoElement) => element.playbackRate),
       )
-      .toBe(3.5);
+      .toBe(8);
     await expect(scene).toHaveAttribute("data-presentation", "intro");
     await expect(scene.locator("canvas")).toBeHidden();
     await expect(scene).toHaveAttribute("data-ambient", "paused");
