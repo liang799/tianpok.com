@@ -5,7 +5,7 @@ import styles from "./scene.module.css";
 
 const transparentPixel =
   "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
-const AUTO_READY_PLAYBACK_RATE = 3.5;
+const AUTO_READY_PLAYBACK_RATE = 8;
 
 /** The same scene rendered offline. No Three.js is needed to paint this layer. */
 export function ConstructionIntro({
