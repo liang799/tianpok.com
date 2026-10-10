@@ -263,6 +263,7 @@ export default function DesktopConstructionScene({
           key={introReplay}
           enabled={nearViewport && preference === "full"}
           active={inViewport && motionAllowed}
+          expedite={renderer === "webgl" && introReplay === 0}
           complete={introComplete}
           visible={presentation !== "live"}
           onComplete={finishIntro}

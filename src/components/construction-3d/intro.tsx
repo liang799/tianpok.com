@@ -5,17 +5,20 @@ import styles from "./scene.module.css";
 
 const transparentPixel =
   "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+const AUTO_READY_PLAYBACK_RATE = 8;
 
 /** The same scene rendered offline. No Three.js is needed to paint this layer. */
 export function ConstructionIntro({
   enabled,
   active,
+  expedite,
   complete,
   visible,
   onComplete,
 }: {
   enabled: boolean;
   active: boolean;
+  expedite: boolean;
   complete: boolean;
   visible: boolean;
   onComplete: () => void;
@@ -31,6 +34,13 @@ export function ConstructionIntro({
     clearStall();
     onComplete();
   }, [clearStall, onComplete]);
+
+  useEffect(() => {
+    const element = video.current;
+    if (!element || !enabled || complete) return;
+    // Keep every lift and the final matched frame. Replay stays at 1x.
+    element.playbackRate = expedite ? AUTO_READY_PLAYBACK_RATE : 1;
+  }, [complete, enabled, expedite]);
 
   useEffect(() => {
     const element = video.current;

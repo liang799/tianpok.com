@@ -25,7 +25,9 @@ export async function expectHeroPoster(page: Page, completed = true) {
 }
 
 export async function finishIntroMedia(page: Page) {
-  const video = heroScene(page).getByTestId("construction-intro-video");
+  const scene = heroScene(page);
+  if ((await scene.getAttribute("data-presentation")) !== "intro") return;
+  const video = scene.getByTestId("construction-intro-video");
   await expect
     .poll(
       () =>
@@ -36,15 +38,16 @@ export async function finishIntroMedia(page: Page) {
       { timeout: 15_000 },
     )
     .toBe(true);
-  // Seek the real media instead of waiting its full duration in every test.
-  // Let the browser emit ended naturally so the production handoff runs.
+  // Automatic fast-forward may finish while we wait for media metadata.
+  if ((await scene.getAttribute("data-presentation")) !== "intro") return;
+  // Seek the real media so the browser still emits ended naturally.
   await video.evaluate(async (element: HTMLVideoElement) => {
     element.currentTime = Math.max(0, element.duration - 0.04);
     await element.play();
   });
   await expect
-    .poll(() => video.evaluate((element: HTMLVideoElement) => element.ended))
-    .toBe(true);
+    .poll(() => scene.getAttribute("data-presentation"))
+    .not.toBe("intro");
 }
 
 export async function enterLiveHero(page: Page) {
