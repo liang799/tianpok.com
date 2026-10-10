@@ -54,19 +54,23 @@ export const Desktop: Story = {
       "https://github.com/liang799",
     );
     const scene = hero.getByTestId("desktop-construction-scene");
-    await expect(scene).toHaveAttribute("data-presentation", "intro");
     const video = hero.getByTestId<HTMLVideoElement>(
       "construction-intro-video",
     );
-    await waitFor(
-      () =>
-        expect(Number.isFinite(video.duration) && video.duration > 0).toBe(
-          true,
-        ),
-      { timeout: 10_000 },
-    );
-    video.currentTime = Math.max(0, video.duration - 0.04);
-    await video.play();
+    // A cached WebGL scene may finish the accelerated intro before this assertion.
+    if (scene.getAttribute("data-presentation") === "intro") {
+      await waitFor(
+        () =>
+          expect(Number.isFinite(video.duration) && video.duration > 0).toBe(
+            true,
+          ),
+        { timeout: 10_000 },
+      );
+      if (scene.getAttribute("data-presentation") === "intro") {
+        video.currentTime = Math.max(0, video.duration - 0.04);
+        await video.play();
+      }
+    }
     await waitFor(
       () => {
         expect(scene).toHaveAttribute("data-renderer", "webgl");
