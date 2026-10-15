@@ -114,7 +114,6 @@ button:focus-visible {
   align-items: center;
   gap: 22px;
   margin-left: auto;
-  margin-right: 62px;
 }
 .primary-navigation a {
   position: relative;
@@ -144,24 +143,6 @@ button:focus-visible {
 .nav-home,
 .nav-projects {
   display: none;
-}
-.header-cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  min-height: 46px;
-  min-width: 197px;
-  padding: 12px 30px;
-  background: #20211f;
-  border-radius: 15px;
-  color: white;
-  font-size: 14px;
-  font-weight: 550;
-  transition: background 0.2s;
-}
-.header-cta:hover {
-  background: #3a3b36;
 }
 .hero {
   height: clamp(590px, 38.5vw, 650px);
@@ -718,8 +699,7 @@ button:focus-visible {
   .site-header .site-container {
     width: min(calc(100% - 144px), 1600px);
   }
-  .primary-navigation,
-  .header-cta {
+  .primary-navigation {
     transform: translateY(-8px);
   }
   .featured-work {
@@ -809,10 +789,6 @@ button:focus-visible {
 @media (max-width: 900px) {
   .primary-navigation {
     gap: 15px;
-    margin-right: 24px;
-  }
-  .header-cta {
-    display: none;
   }
   .hero {
     min-height: 620px;

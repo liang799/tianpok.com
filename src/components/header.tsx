@@ -3,7 +3,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Brand } from "./brand";
-import { ArrowRight } from "./icons";
 const links = [
   { label: "Home", href: "/#home", section: "home" },
   { label: "Projects", href: "/#projects", section: "projects" },
@@ -117,9 +116,6 @@ export function Header() {
             );
           })}
         </nav>
-        <Link href="/#projects" className="header-cta">
-          View my work <ArrowRight />
-        </Link>
       </div>
     </header>
   );

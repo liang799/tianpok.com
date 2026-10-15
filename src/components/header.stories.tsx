@@ -38,8 +38,8 @@ export const DesktopHome: Story = {
     await expect(work).toHaveAttribute("href", "/#projects");
     await expect(work).not.toHaveAttribute("aria-current");
     await expect(
-      canvas.getByRole("link", { name: "View my work" }),
-    ).toHaveAttribute("href", "/#projects");
+      canvas.queryByRole("link", { name: "View my work" }),
+    ).not.toBeInTheDocument();
     await expect(
       navigation.getByRole("link", { name: "Contact" }),
     ).toHaveAttribute("href", "mailto:hello@tianpok.com");
